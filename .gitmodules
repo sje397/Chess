@@ -1,0 +1,3 @@
+[submodule "aeoid"]
+	path = aeoid
+	url = ../aeoid
