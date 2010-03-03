@@ -17,10 +17,15 @@
 </head>
 <body>
 	<div id='logout'><span id='logout-link'><a href='{{ logoutUrl }}'>Log out</a></span></div>
-	<div id='title'><span><strong>{{ user.user_id }}</strong></span></div>
+	<div id='title'><span><strong>Chess</strong></span></div>
+	<div id='msg'>Welcome {{ user.user_info.firstname }}!</div>
+	<div id='info'></div>
 	<div id='content'>
-		<div id='msg'>Welcome!</div>
-		<div id='info'></div>
+		<table>
+{% for e in feed.entry %}
+    <tr><td>{{ e.title.text }}</td></tr>
+{% endfor %}
+		</table>
 	</div>
 </body>
 </html>
