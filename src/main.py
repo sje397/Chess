@@ -58,7 +58,10 @@ class MainView(webapp.RequestHandler):
     
     gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
     #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
-    feed = gcontacts.GetContactsFeed()
+    
+    query = gdata.contacts.service.ContactsQuery()
+    query.max_results = 500
+    feed = gcontacts.GetContactsFeed(query.ToUri())
 
     template_values = {
       'user': user,
