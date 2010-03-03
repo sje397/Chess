@@ -1,0 +1,26 @@
+<html>
+<head>
+  <title>Chess</title>
+
+  <style>
+  /*div {border: 1px solid black; }*/
+  #logout {text-align:right}
+  #info {text-align:right}
+  #content {position:relative;}
+  </style>
+
+  <script type='text/javascript' src='http://www.google.com/jsapi'></script>
+  <script type='text/javascript'>
+  	google.load("jquery", "1.3.2");
+    google.load('visualization', '1', {packages:['imagepiechart']});
+  </script>
+</head>
+<body>
+	<div id='logout'><span id='logout-link'><a href='{{ logoutUrl }}'>Log out</a></span></div>
+	<div id='title'><span><strong>{{ user.user_id }}</strong></span></div>
+	<div id='content'>
+		<div id='msg'>Welcome!</div>
+		<div id='info'></div>
+	</div>
+</body>
+</html>
