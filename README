@@ -1,0 +1,3 @@
+cd ~/repo
+git clone git://github.com/sje397/aeoid.git
+git clone git://github.com/sje397/Chess.git
