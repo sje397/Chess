@@ -5,7 +5,7 @@
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>
     <style>
-      .board {width: 600px; height: 600px; border: 2px solid darkgrey; position: relative;}
+      .board {width: 800px; height: 800px; border: 2px solid darkgrey; position: relative;}
       .square {float: left;}
       /*.wsq {background-color: lightgrey;}*/
       .wsq {background-image:url('images/white-marble.jpg');}
@@ -20,7 +20,8 @@
       $(function() {
         var invert = false;
         var whiteMove = true;
-        var board = $('.board'), w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
+        var board = $('.board');
+        var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
 
         function makePiece(x, y, isWhite, typ, square) {
           var img = ('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
@@ -104,9 +105,9 @@
       });
     </script>
   </head>
-  <body>
+  <body><center>
     <div></div>
     <div class='board'>
     </div>
-  </body>
+  </center></body>
 </html>
