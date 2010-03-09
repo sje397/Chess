@@ -1,0 +1,113 @@
+<html>
+  <head>
+    <title>Chess</title>
+    <link type="text/css" href="css/custom-theme/jquery-ui-1.7.2.custom.css" rel="stylesheet" />  
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>
+    <style>
+      .board {width: 600px; height: 600px; border: 2px solid darkgrey; position: relative;}
+      .square {float: left;}
+      /*.wsq {background-color: lightgrey;}*/
+      .wsq {background-image:url('images/white-marble.jpg');}
+      /*.bsq {background-color: grey;}*/
+      .bsq {background-image:url('images/grey-marble.jpg');}
+      .dropper {background-color: yellow; background-image: none}
+      .piece {position: absolute;}
+      /*.wpc {background-color: white; color: black;}
+      .bpc {background-color: black; color: white;}*/
+    </style>
+    <script>
+      //.square {position: absolute;}
+      $(function() {
+        var invert = false;
+        var whiteMove = true;
+        var board = $('.board'), w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
+
+        function makePiece(x, y, isWhite, typ, square) {
+          var img = ('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+          var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
+            .css('width', '' + sw + 'px')
+            .css('height', '' + sh + 'px')
+            .css('left', '' + (x * sw) + 'px')
+            .css('top', '' + (y * sh) + 'px')
+            .data('square', square)
+            .data('startY', y)
+            .append(img);
+          board.append(piece);
+          // must be done after adding to board, or the position becomes relative?!?!
+          piece.draggable({   containment: 'parent', 
+                              stack: { group: '.piece', min: 1 },
+                              revert: 'invalid' });
+          return piece;
+        }
+          
+        var types = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+
+        for(var y = 0; y < 8; y++) {
+          for(var x = 0; x < 8; x++) {
+            square = $('<div class="square ' + ((y + x) % 2 ? 'bsq' : 'wsq') + '"/>')
+              .css('width', '' + sw + 'px')
+              .css('height', '' + sh + 'px')
+              .data('x', x)
+              .data('y', y)
+              .droppable({
+	              accept: function(piece) {
+	              		if(piece.hasClass('wpc') != whiteMove) return false;
+	                	var square = $(this);
+	                	var targetPiece = square.data('piece');
+	                	return (!targetPiece || (targetPiece.hasClass('wpc') != piece.hasClass('wpc')));  
+	            		},
+	              hoverClass: 'dropper',
+	              cursor: 'pointer',
+	              drop: function(event, ui) {
+	                var targetSquare = $(this),
+			            	piece = ui.draggable,
+	                	sourceSquare = piece.data('square');
+	            		if(targetSquare.offset().left != sourceSquare.offset().left || targetSquare.offset().top != sourceSquare.offset().top) {
+	                	sourceSquare.removeData('piece');
+	
+	                  var targetPiece = targetSquare.data('piece');
+	                  if(targetPiece) targetPiece.remove();
+	
+	                  targetSquare.data('piece', piece);
+	              		piece.data('square', targetSquare);
+
+	              		//promote pawns
+	              		if(piece.hasClass('pawn') && Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
+		              		var isWhite = piece.hasClass('wpc');
+		              		piece.removeClass('pawn').addClass('queen')
+		              			.html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+	              		}
+
+		                whiteMove = !whiteMove;
+	            		} 
+	
+	                piece
+	                  .css('left', '' + event.target.offsetLeft + 'px')
+	                  .css('top', '' + event.target.offsetTop + 'px');
+	              }
+	            });
+            board.append(square);
+
+            var piece;
+            if(y == 0 || y == 7) {
+		          var typ = types[invert ? (7 - x) : x];
+		          if(y == 0) piece = makePiece(x, 0, invert, typ, square);
+		          if(y == 7) piece = makePiece(x, 7, !invert, typ, square);
+	          }
+            else if(y == 1) piece = makePiece(x, 1, invert, 'pawn', square);
+            else if(y == 6) piece = makePiece(x, 6, !invert, 'pawn', square);
+            else piece = null;
+            if(piece) square.data('piece', piece);
+        	}
+        }
+        
+      });
+    </script>
+  </head>
+  <body>
+    <div></div>
+    <div class='board'>
+    </div>
+  </body>
+</html>

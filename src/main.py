@@ -15,6 +15,8 @@ import gdata.urlfetch
 import gdata.contacts
 import gdata.contacts.service
 
+dev_env = os.environ['SERVER_SOFTWARE'].startswith('Dev')
+
 settings = {
   'GOOGLE_CONSUMER_KEY': 'your-move.appspot.com',
   'SIG_METHOD': gdata.auth.OAuthSignatureMethod.RSA_SHA1
@@ -44,24 +46,28 @@ def makeToken(tokenString, scope):
 class MainView(webapp.RequestHandler):
   def get(self):
     user = users.get_current_user()
-    if not user:
-      self.redirect(users.create_login_url(self.request.url))
-      return
-    logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
+    if dev_env:
+      user = {}
+      feed = {}
+    else:
+      if not user:
+        self.redirect(users.create_login_url(self.request.url))
+        return
+      logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
         
-    if not hasattr(user.user_info(), 'access_token') and hasattr(user.user_info(), 'request_token'):
-      signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
-  
-      access_token = gcontacts.UpgradeToOAuthAccessToken(signed_request_token)
-      logging.info('access token: %s' % access_token)
-      user.updateInfo(access_token = str(access_token))
+      if not hasattr(user.user_info(), 'access_token') and hasattr(user.user_info(), 'request_token'):
+        signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
     
-    gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
-    #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
-    
-    query = gdata.contacts.service.ContactsQuery()
-    query.max_results = 500
-    feed = gcontacts.GetContactsFeed(query.ToUri())
+        access_token = gcontacts.UpgradeToOAuthAccessToken(signed_request_token)
+        logging.info('access token: %s' % access_token)
+        user.updateInfo(access_token = str(access_token))
+      
+      gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
+      #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
+      
+      query = gdata.contacts.service.ContactsQuery()
+      query.max_results = 500
+      feed = gcontacts.GetContactsFeed(query.ToUri())
 
     template_values = {
       'user': user,
@@ -69,7 +75,7 @@ class MainView(webapp.RequestHandler):
       'feed': feed
     }
 
-    path = os.path.join(os.path.dirname(__file__), 'main.html')
+    path = os.path.join(os.path.dirname(__file__), 'chess.html')
     self.response.out.write(template.render(path, template_values))      
 
 
