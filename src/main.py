@@ -46,14 +46,16 @@ def makeToken(tokenString, scope):
 class MainView(webapp.RequestHandler):
   def get(self):
     user = users.get_current_user()
-    if dev_env:
-      user = {}
-      feed = {}
-    else:
+    template_values = {
+      'logoutUrl': users.create_logout_url("/")
+    }
+    if not dev_env:
       if not user:
         self.redirect(users.create_login_url(self.request.url))
         return
       logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
+        
+      template_values.update({'user': user})
         
       if not hasattr(user.user_info(), 'access_token') and hasattr(user.user_info(), 'request_token'):
         signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
@@ -62,18 +64,15 @@ class MainView(webapp.RequestHandler):
         logging.info('access token: %s' % access_token)
         user.updateInfo(access_token = str(access_token))
       
-      gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
-      #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
-      
-      query = gdata.contacts.service.ContactsQuery()
-      query.max_results = 500
-      feed = gcontacts.GetContactsFeed(query.ToUri())
+      if hassattr(user.user_info(), 'access_token'):
+        gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
+        #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
+        
+        query = gdata.contacts.service.ContactsQuery()
+        query.max_results = 500
+        feed = gcontacts.GetContactsFeed(query.ToUri())
 
-    template_values = {
-      'user': user,
-      'logoutUrl': users.create_logout_url("/"),
-      'feed': feed
-    }
+        template_values.update({'feed': feed})
 
     path = os.path.join(os.path.dirname(__file__), 'chess.html')
     self.response.out.write(template.render(path, template_values))      
