@@ -17,122 +17,6 @@
       /*.wpc {background-color: white; color: black;}*/
       /*.bpc {background-color: black; color: white;}*/
     </style>
-    <script>
-      $(function() {
-        var invert = false;
-        var whiteMove = true;
-        var board = $('.board');
-        var boardData = [];
-        var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
-
-        // we've already eliminated:
-        //  - white move on black's turn and vice versa
-        //  - move from and to same square
-        //  - taking your own peices
-        function legalMove(sourceSquare, targetSquare, piece) {
-            var isWhite = piece.hasClass('wpc'),
-              sx = sourceSquare.data('x'), 
-              sy = sourceSquare.data('y'),
-              tx = targetSquare.data('x'),
-              ty = targetSquare.data('y');
-            if(piece.hasClass('rook')) {
-                if(sx != tx && sy != ty)
-                    return false;
-                for(var x = sx + (tx > sx ? 1 : -1); x != tx; x = x + (tx > sx ? 1 : -1))
-                  if(boardData[x][sy].data('piece')) return false;
-                for(var y = sy + (ty > sy ? 1 : -1); y != ty; y = y + (ty > sy ? 1 : -1))
-                    if(boardData[x][sy].data('piece')) return false;
-            }    
-            return true;
-        }
-        
-        function makePiece(x, y, isWhite, typ, square) {
-          var img = ('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
-          var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
-            .css('width', '' + sw + 'px')
-            .css('height', '' + sh + 'px')
-            .css('left', '' + (x * sw) + 'px')
-            .css('top', '' + (y * sh) + 'px')
-            .data('square', square)
-            .data('startY', y)
-            .append(img);
-          board.append(piece);
-          // must be done after adding to board, or the position becomes relative?!?!
-          piece.draggable({   containment: 'parent', 
-                              stack: { group: '.piece', min: 1 },
-                              revert: 'invalid' });
-          return piece;
-        }
-          
-        var types = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
-
-        for(var x = 0; x < 8; x++) {
-          boardData[x] = [];
-          for(var y = 0; y < 8; y++) {
-            square = $('<div class="square ' + ((y + x) % 2 ? 'bsq' : 'wsq') + '"/>')
-              .css('width', '' + sw + 'px')
-              .css('height', '' + sh + 'px')
-              .data('x', x)
-              .data('y', y)
-              .droppable({
-                accept: function(piece) {
-                    if(piece.hasClass('wpc') != whiteMove) return false;
-                    var square = $(this), sourceSquare = piece.data('square');
-                    if(square.data('x') == sourceSquare.data('x') && square.data('y') == sourceSquare.data('y'))
-                        return false;
-                    var targetPiece = square.data('piece');
-                    if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc')))
-                        return false;
-                    return legalMove(sourceSquare, square, piece);  
-                  },
-                hoverClass: 'dropper',
-                cursor: 'pointer',
-                drop: function(event, ui) {
-                  var targetSquare = $(this),
-                    piece = ui.draggable,
-                    sourceSquare = piece.data('square');
-
-                  sourceSquare.removeData('piece');
-
-                  /////////// move
-                  var targetPiece = targetSquare.data('piece');
-                  if(targetPiece) targetPiece.remove();
-
-                  targetSquare.data('piece', piece);
-                  piece.data('square', targetSquare);
-
-                  //promote pawns
-                  if(piece.hasClass('pawn') && Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
-                    var isWhite = piece.hasClass('wpc');
-                    piece.removeClass('pawn').addClass('queen')
-                      .html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
-                  }
-
-                  whiteMove = !whiteMove;
-                  /////////////////
-
-                  piece
-                    .css('left', '' + event.target.offsetLeft + 'px')
-                    .css('top', '' + event.target.offsetTop + 'px');
-                }
-              });
-            board.append(square);
-            boardData[x][y] = square;
-            
-            var piece;
-            if(y == 0 || y == 7) {
-              var typ = types[invert ? (7 - x) : x];
-              if(y == 0) piece = makePiece(x, 0, invert, typ, square);
-              if(y == 7) piece = makePiece(x, 7, !invert, typ, square);
-            }
-            else if(y == 1) piece = makePiece(x, 1, invert, 'pawn', square);
-            else if(y == 6) piece = makePiece(x, 6, !invert, 'pawn', square);
-            else piece = null;
-          }
-        }
-        
-      });
-    </script>
   </head>
   <body>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
@@ -141,6 +25,292 @@
     <div></div>
     <div class='board'>
     </div>
+    <div><a href='#' id='undo'>Undo</a></div>
+    <div id='info'></div>
   </center>
+    <script>
+      $(function() {
+        var invert = false;
+        var whiteMove = true;
+        var board = $('.board');
+        var boardData = [];
+        var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
+        var moveList = [];
+        function Move(piece, sourceSquare, firstMove, visible, takenPiece) {
+            this.piece = piece;
+            this.sourceSquare = sourceSquare;
+            this.takenPiece = takenPiece;
+            this.firstMove = firstMove;
+            this.visible = visible;
+        }
+
+        // we've already eliminated:
+        //  - white move on black's turn and vice versa
+        //  - move from and to same square
+        //  - taking your own peices
+        function pieceBetween(sx, sy, tx, ty) {
+            if(sy == ty) for(var x = sx + (tx > sx ? 1 : -1); x != tx; x = x + (tx > sx ? 1 : -1))
+              if(boardData[sy][x].data('piece')) return true;
+            if(sx == tx) for(var y = sy + (ty > sy ? 1 : -1); y != ty; y = y + (ty > sy ? 1 : -1))
+              if(boardData[y][sx].data('piece')) return true;
+            if(Math.abs(sx - tx) != Math.abs(sy - ty)) return false;
+            var y = sy + (ty > sy ? 1 : -1);
+            for(var x = sx + (tx > sx ? 1 : -1); x != tx; x = x + (tx > sx ? 1 : -1)) {
+              if(boardData[y][x].data('piece')) return true;
+              y = y + (ty > sy ? 1 : -1);
+            }
+            return false;
+        }
+
+        function legalMove(piece, targetSquare) {
+            var sourceSquare = piece.data('square'),
+              sx = sourceSquare.data('x'), 
+              sy = sourceSquare.data('y'),
+              tx = targetSquare.data('x'),
+              ty = targetSquare.data('y');
+            
+            if(!piece.hasClass('knight') && pieceBetween(sx, sy, tx, ty)) return false;
+            if(piece.hasClass('rook')) {
+                return (sx == tx || sy == ty);
+            } else if(piece.hasClass('knight')) {
+                return ((Math.abs(sx - tx) == 2 && Math.abs(sy - ty) == 1)
+                        || (Math.abs(sx - tx) == 1 && Math.abs(sy - ty) == 2));
+            } else if(piece.hasClass('bishop')) {
+                return (Math.abs(sx - tx) == Math.abs(sy - ty));
+            } else if(piece.hasClass('queen')) {
+                return ((sx == tx || sy == ty) || Math.abs(sx - tx) == Math.abs(sy - ty));
+            } else if(piece.hasClass('king')) {
+                if(piece.hasClass('hasMoved')) return (Math.abs(sx - tx) <= 1 && Math.abs(sy - ty) <= 1);
+                if(!piece.hasClass('hasMoved')) {
+                    if(sy != ty) return (Math.abs(sx - tx) <= 1 && Math.abs(sy - ty) <= 1);
+                    if(Math.abs(sx - tx) == 1) return true;
+                    if(Math.abs(sx - tx) == 2) { // castle
+                      var isWhite = piece.hasClass('wpc');
+                      if(tx > sx && boardData[sy][7].data('piece') && !boardData[sy][7].data('piece').hasClass('hasMoved'))
+                          return !(inDanger(sourceSquare, isWhite) || inDanger(boardData[sy][sx + 1], isWhite) || inDanger(targetSquare, isWhite));
+                      if(tx < sx && boardData[sy][0].data('piece') && !boardData[sy][0].data('piece').hasClass('hasMoved'))
+                          return !(inDanger(sourceSquare, isWhite) || inDanger(boardData[sy][sx - 1], isWhite) || inDanger(targetSquare, isWhite));
+                    }
+                }
+                
+            } else if(piece.hasClass('pawn')) {
+                if(piece.data('startY') == 1 && ty <= sy) return false;
+                if(piece.data('startY') == 6 && ty >= sy) return false;
+                if(Math.abs(sx - tx) > 1) return false;
+                if(sx == tx) return (Math.abs(sy - ty) <= (piece.hasClass('hasMoved') ? 1 : 2) && !boardData[ty][tx].data('piece'));
+                if(sx != tx) return (Math.abs(sy - ty) == 1 
+                                     && (boardData[ty][tx].data('piece') 
+                                         || (boardData[sy][tx].data('piece') 
+                                             && boardData[sy][tx].data('piece').hasClass('passant'))));
+            }
+            return true;
+        }
+
+        function inDanger(square, isWhite) {
+            var enemyPieces = $('.' + (isWhite ? 'bpc' : 'wpc'));
+            for(var i = 0; i < enemyPieces.length; i++) {
+                var piece = $(enemyPieces[i]);
+                // creating check for yourself doesn't matter, according
+                // to http://www.chessvariants.com/d.chess/faq.html
+                if(legalMove(piece, square)) {// && !createsCheck(piece, square)) { 
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function createsCheck(piece, targetSquare) {
+            // check for check
+            // have to temporarily remove the piece and place it in the new spot
+            var sourceSquare = piece.data('square');
+            doMove(piece, targetSquare, false);
+            var inCheck = false,
+              isWhite = piece.hasClass('wpc');
+            if(piece.hasClass('king')) {
+                if(inDanger(targetSquare, isWhite)) 
+                    inCheck = true;
+            } else {
+                var king = $('.' + (isWhite ? 'wpc' : 'bpc') + '.king'); 
+                if(inDanger(king.data('square'), isWhite)) 
+                    inCheck = true;
+            }
+            // restore state
+            undoMove();
+            return inCheck;
+        }
+
+        var types = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+
+        function acceptFunc(piece) {
+            if(piece.hasClass('wpc') != whiteMove) return false;
+            var sq = $(this), sourceSquare = piece.data('square');
+            if(sq.data('x') == sourceSquare.data('x') && sq.data('y') == sourceSquare.data('y')) return false;
+            var targetPiece = sq.data('piece');
+            if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc'))) return false;
+            return legalMove(piece, sq) && !createsCheck(piece, sq);
+        }
+
+        function dropFunc(event, ui) {
+          var targetSquare = $(this),
+            piece = ui.draggable;
+          doMove(piece, targetSquare, true);
+        }
+
+        function doMove(piece, targetSquare, visible) {
+          var sourceSquare = piece.data('square');
+          sourceSquare.removeData('piece');
+
+          var targetPiece = targetSquare.data('piece');
+          if(!targetPiece && piece.hasClass('pawn') && sourceSquare.data('x') != targetSquare.data('x')) {
+              // we are taking en passant
+              targetPiece = $('.passant');
+              targetPiece.data('square').removeData('piece');
+          }
+          if(targetPiece) targetPiece.hide();
+
+          $('.passant').removeClass('passant');
+
+          targetSquare.data('piece', piece);
+          piece.data('square', targetSquare);
+
+          // pawns are special
+          if(piece.hasClass('pawn')) {
+            //promote pawns
+            if(Math.abs(sourceSquare.data('y') - targetSquare.data('y')) == 2) 
+                piece.addClass('passant');
+            if(Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
+              var isWhite = piece.hasClass('wpc');
+              piece.removeClass('pawn').addClass('queen')
+                .html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+            }
+          }
+
+          if(piece.hasClass('king') && Math.abs(sourceSquare.data('x') - targetSquare.data('x')) == 2) {
+              // castle
+              var rook, nx, y = sourceSquare.data('y');
+              if(targetSquare.data('x') > sourceSquare.data('x')) {
+                  rook = boardData[y][7].data('piece');
+                  nx = 5;
+              } else {
+                  rook = boardData[y][0].data('piece');
+                  nx = 3;
+              }
+              rook.data('square').removeData('piece');
+              rook.data('square', boardData[y][nx]);
+              boardData[y][nx].data('piece', rook);
+              rook.addClass('hasMoved');
+
+              if(visible)
+              rook
+              .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
+              .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
+          }
+
+          var firstMove = !piece.hasClass('hasMoved');
+          if(firstMove) piece.addClass('hasMoved');
+
+          whiteMove = !whiteMove;
+
+          if(visible)
+          piece
+            .css('left', '' + targetSquare[0].offsetLeft + 'px')
+            .css('top', '' + targetSquare[0].offsetTop + 'px');
+          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece)); 
+        }
+
+        function undoMove() {
+            if(moveList.length == 0) return;
+            
+            whiteMove = !whiteMove;
+
+            var move = moveList.pop(),
+              targetSquare = move.piece.data('square');
+            if(move.visible)
+            move.piece
+            .css('left', '' + move.sourceSquare[0].offsetLeft + 'px')
+            .css('top', '' + move.sourceSquare[0].offsetTop + 'px');
+
+            targetSquare.removeData('piece');
+            move.piece.data('square', move.sourceSquare);
+            move.sourceSquare.data('piece', move.piece);
+            if(move.takenPiece) {
+                move.takenPiece.data('square').data('piece', move.takenPiece);
+                move.takenPiece.show();
+            }
+            if(move.firstMove) move.piece.removeClass('hasMoved');
+            if(move.piece.hasClass('king') && Math.abs(targetSquare.data('x') - move.sourceSquare.data('x')) == 2) {
+                // restore castle
+                var rook, nx, y = move.sourceSquare.data('y');
+                if(targetSquare.data('x') > move.sourceSquare.data('x')) {
+                    rook = boardData[y][5].data('piece');
+                    nx = 7;
+                } else {
+                    rook = boardData[y][3].data('piece');
+                    nx = 0;
+                }
+                rook.data('square').removeData('piece');
+                rook.data('square', boardData[y][nx]);
+                boardData[y][nx].data('piece', rook);
+                rook.removeClass('hasMoved');
+
+                if(move.visible)
+                rook
+                .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
+                .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
+            }
+        }
+
+        // create the board
+        function makePiece(x, y, isWhite, typ, square) {
+          var img = ('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+          var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
+            .css('width', '' + sw + 'px')
+            .css('height', '' + sh + 'px')
+            .css('left', '' + (x * sw) + 'px')
+            .css('top', '' + (y * sh) + 'px')
+            .append(img);
+          board.append(piece);
+          // must be done after adding to board, or the position becomes relative?!?!
+          piece.draggable({   containment: 'parent', 
+                              stack: { group: '.piece', min: 1 },
+                              revert: 'invalid' });
+          piece.data('square', square)
+            .data('startY', y);
+          square.data('piece', piece);
+          return piece;
+        }
+
+        for(var y = 0; y < 8; y++) {
+          boardData[y] = [];
+	        for(var x = 0; x < 8; x++) {
+            var square = $('<div class="square ' + ((y + x) % 2 ? 'bsq' : 'wsq') + '"/>')
+              .css('width', '' + sw + 'px')
+              .css('height', '' + sh + 'px')
+              .droppable({
+                accept: acceptFunc,
+                hoverClass: 'dropper',
+                cursor: 'pointer',
+                drop: dropFunc
+              });
+            board.append(square);
+            square.data('x', x)
+             .data('y', y);
+            
+            boardData[y][x] = square;
+            
+            if(y == 0 || y == 7) {
+              var typ = types[invert ? (7 - x) : x];
+              if(y == 0) makePiece(x, 0, invert, typ, square);
+              if(y == 7) makePiece(x, 7, !invert, typ, square);
+            }
+            else if(y == 1) makePiece(x, 1, invert, 'pawn', square);
+            else if(y == 6) makePiece(x, 6, !invert, 'pawn', square);
+          }
+        }
+
+        $('#undo').click(undoMove);
+        
+      });
+    </script>
   </body>
 </html>
