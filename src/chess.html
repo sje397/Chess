@@ -25,12 +25,12 @@
     <div></div>
     <div class='board'>
     </div>
-    <div><a href='#' id='undo'>Undo</a></div>
+    <div><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a></div>
     <div id='info'></div>
   </center>
     <script>
       $(function() {
-        var invert = false;
+        var invert = true;
         var whiteMove = true;
         var board = $('.board');
         var boardData = [];
@@ -90,6 +90,7 @@
                           return !(inDanger(sourceSquare, isWhite) || inDanger(boardData[sy][sx + 1], isWhite) || inDanger(targetSquare, isWhite));
                       if(tx < sx && boardData[sy][0].data('piece') && !boardData[sy][0].data('piece').hasClass('hasMoved'))
                           return !(inDanger(sourceSquare, isWhite) || inDanger(boardData[sy][sx - 1], isWhite) || inDanger(targetSquare, isWhite));
+                      return false;
                     }
                 }
                 
@@ -180,6 +181,7 @@
                 piece.addClass('passant');
             if(Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
               var isWhite = piece.hasClass('wpc');
+              // TODO: allow promotion to rook, bishop, knight or queen
               piece.removeClass('pawn').addClass('queen')
                 .html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
             }
@@ -190,10 +192,10 @@
               var rook, nx, y = sourceSquare.data('y');
               if(targetSquare.data('x') > sourceSquare.data('x')) {
                   rook = boardData[y][7].data('piece');
-                  nx = 5;
+                  nx = invert ? 4 : 5;
               } else {
                   rook = boardData[y][0].data('piece');
-                  nx = 3;
+                  nx = invert ? 2 : 3;
               }
               rook.data('square').removeData('piece');
               rook.data('square', boardData[y][nx]);
@@ -201,9 +203,9 @@
               rook.addClass('hasMoved');
 
               if(visible)
-              rook
-              .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
-              .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
+                rook
+                  .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
+                  .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
           }
 
           var firstMove = !piece.hasClass('hasMoved');
@@ -212,9 +214,9 @@
           whiteMove = !whiteMove;
 
           if(visible)
-          piece
-            .css('left', '' + targetSquare[0].offsetLeft + 'px')
-            .css('top', '' + targetSquare[0].offsetTop + 'px');
+            piece
+              .css('left', '' + targetSquare[0].offsetLeft + 'px')
+              .css('top', '' + targetSquare[0].offsetTop + 'px');
           moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece)); 
         }
 
@@ -226,9 +228,9 @@
             var move = moveList.pop(),
               targetSquare = move.piece.data('square');
             if(move.visible)
-            move.piece
-            .css('left', '' + move.sourceSquare[0].offsetLeft + 'px')
-            .css('top', '' + move.sourceSquare[0].offsetTop + 'px');
+              move.piece
+                .css('left', '' + move.sourceSquare[0].offsetLeft + 'px')
+                .css('top', '' + move.sourceSquare[0].offsetTop + 'px');
 
             targetSquare.removeData('piece');
             move.piece.data('square', move.sourceSquare);
@@ -242,10 +244,10 @@
                 // restore castle
                 var rook, nx, y = move.sourceSquare.data('y');
                 if(targetSquare.data('x') > move.sourceSquare.data('x')) {
-                    rook = boardData[y][5].data('piece');
+                    rook = boardData[y][invert ? 4 : 5].data('piece');
                     nx = 7;
                 } else {
-                    rook = boardData[y][3].data('piece');
+                    rook = boardData[y][invert ? 2 : 3].data('piece');
                     nx = 0;
                 }
                 rook.data('square').removeData('piece');
@@ -254,9 +256,9 @@
                 rook.removeClass('hasMoved');
 
                 if(move.visible)
-                rook
-                .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
-                .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
+                  rook
+                    .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
+                    .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
             }
         }
 
@@ -309,6 +311,9 @@
         }
 
         $('#undo').click(undoMove);
+        $('#reset').click(function() {
+            while(moveList.length) undoMove();
+        });
         
       });
     </script>
