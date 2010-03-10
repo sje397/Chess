@@ -22,13 +22,14 @@ settings = {
   'SIG_METHOD': gdata.auth.OAuthSignatureMethod.RSA_SHA1
 }
 
-f = open('chessrsakey.pem')
-RSA_KEY = f.read()
-f.close()
+if not dev_env:
+  f = open('chessrsakey.pem')
+  RSA_KEY = f.read()
+  f.close()
 
-gcontacts = gdata.contacts.service.ContactsService()
-gdata.alt.appengine.run_on_appengine(gcontacts)
-gcontacts.SetOAuthInputParameters(settings['SIG_METHOD'], settings['GOOGLE_CONSUMER_KEY'], rsa_key=RSA_KEY)
+  gcontacts = gdata.contacts.service.ContactsService()
+  gdata.alt.appengine.run_on_appengine(gcontacts)
+  gcontacts.SetOAuthInputParameters(settings['SIG_METHOD'], settings['GOOGLE_CONSUMER_KEY'], rsa_key=RSA_KEY)
 
 from aeoid import users
 
