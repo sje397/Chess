@@ -85,10 +85,11 @@
                     if(sy != ty) return (Math.abs(sx - tx) <= 1 && Math.abs(sy - ty) <= 1);
                     if(Math.abs(sx - tx) == 1) return true;
                     if(Math.abs(sx - tx) == 2) { // castle
+                      // king and rook may not capture during castle: http://www.chessvariants.com/d.chess/castlefaq.html
                       var isWhite = piece.hasClass('wpc');
-                      if(tx > sx && boardData[sy][7].data('piece') && !boardData[sy][7].data('piece').hasClass('hasMoved'))
+                      if(tx > sx && !pieceBetween(sx, sy, 7, sy) && boardData[sy][7].data('piece') && !boardData[sy][7].data('piece').hasClass('hasMoved'))
                           return !(inDanger(sourceSquare, isWhite) || inDanger(boardData[sy][sx + 1], isWhite) || inDanger(targetSquare, isWhite));
-                      if(tx < sx && boardData[sy][0].data('piece') && !boardData[sy][0].data('piece').hasClass('hasMoved'))
+                      if(tx < sx && !pieceBetween(sx, sy, 0, sy) && boardData[sy][0].data('piece') && !boardData[sy][0].data('piece').hasClass('hasMoved'))
                           return !(inDanger(sourceSquare, isWhite) || inDanger(boardData[sy][sx - 1], isWhite) || inDanger(targetSquare, isWhite));
                       return false;
                     }
