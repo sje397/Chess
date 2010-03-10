@@ -65,7 +65,7 @@ class MainView(webapp.RequestHandler):
         logging.info('access token: %s' % access_token)
         user.updateInfo(access_token = str(access_token))
       
-      if hassattr(user.user_info(), 'access_token'):
+      if hasattr(user.user_info(), 'access_token'):
         gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
         #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
         
