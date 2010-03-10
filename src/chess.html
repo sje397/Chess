@@ -22,8 +22,30 @@
         var invert = false;
         var whiteMove = true;
         var board = $('.board');
+        var boardData = [];
         var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
 
+        // we've already eliminated:
+        //  - white move on black's turn and vice versa
+        //  - move from and to same square
+        //  - taking your own peices
+        function legalMove(sourceSquare, targetSquare, piece) {
+            var isWhite = piece.hasClass('wpc'),
+              sx = sourceSquare.data('x'), 
+              sy = sourceSquare.data('y'),
+              tx = targetSquare.data('x'),
+              ty = targetSquare.data('y');
+            if(piece.hasClass('rook')) {
+                if(sx != tx && sy != ty)
+                    return false;
+                for(var x = sx + (tx > sx ? 1 : -1); x != tx; x = x + (tx > sx ? 1 : -1))
+                  if(boardData[x][sy].data('piece')) return false;
+                for(var y = sy + (ty > sy ? 1 : -1); y != ty; y = y + (ty > sy ? 1 : -1))
+                    if(boardData[x][sy].data('piece')) return false;
+            }    
+            return true;
+        }
+        
         function makePiece(x, y, isWhite, typ, square) {
           var img = ('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
           var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
@@ -44,8 +66,9 @@
           
         var types = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
 
-        for(var y = 0; y < 8; y++) {
-          for(var x = 0; x < 8; x++) {
+        for(var x = 0; x < 8; x++) {
+          boardData[x] = [];
+          for(var y = 0; y < 8; y++) {
             square = $('<div class="square ' + ((y + x) % 2 ? 'bsq' : 'wsq') + '"/>')
               .css('width', '' + sw + 'px')
               .css('height', '' + sh + 'px')
@@ -54,9 +77,13 @@
               .droppable({
                 accept: function(piece) {
                     if(piece.hasClass('wpc') != whiteMove) return false;
-                    var square = $(this);
+                    var square = $(this), sourceSquare = piece.data('square');
+                    if(square.data('x') == sourceSquare.data('x') && square.data('y') == sourceSquare.data('y'))
+                        return false;
                     var targetPiece = square.data('piece');
-                    return (!targetPiece || (targetPiece.hasClass('wpc') != piece.hasClass('wpc')));  
+                    if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc')))
+                        return false;
+                    return legalMove(sourceSquare, square, piece);  
                   },
                 hoverClass: 'dropper',
                 cursor: 'pointer',
@@ -64,24 +91,25 @@
                   var targetSquare = $(this),
                     piece = ui.draggable,
                     sourceSquare = piece.data('square');
-                  if(targetSquare.offset().left != sourceSquare.offset().left || targetSquare.offset().top != sourceSquare.offset().top) {
-                    sourceSquare.removeData('piece');
 
-                    var targetPiece = targetSquare.data('piece');
-                    if(targetPiece) targetPiece.remove();
+                  sourceSquare.removeData('piece');
 
-                    targetSquare.data('piece', piece);
-                    piece.data('square', targetSquare);
+                  /////////// move
+                  var targetPiece = targetSquare.data('piece');
+                  if(targetPiece) targetPiece.remove();
 
-                    //promote pawns
-                    if(piece.hasClass('pawn') && Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
-                      var isWhite = piece.hasClass('wpc');
-                      piece.removeClass('pawn').addClass('queen')
-                        .html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
-                    }
+                  targetSquare.data('piece', piece);
+                  piece.data('square', targetSquare);
 
-                    whiteMove = !whiteMove;
-                  } 
+                  //promote pawns
+                  if(piece.hasClass('pawn') && Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
+                    var isWhite = piece.hasClass('wpc');
+                    piece.removeClass('pawn').addClass('queen')
+                      .html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+                  }
+
+                  whiteMove = !whiteMove;
+                  /////////////////
 
                   piece
                     .css('left', '' + event.target.offsetLeft + 'px')
@@ -89,7 +117,8 @@
                 }
               });
             board.append(square);
-
+            boardData[x][y] = square;
+            
             var piece;
             if(y == 0 || y == 7) {
               var typ = types[invert ? (7 - x) : x];
@@ -99,7 +128,6 @@
             else if(y == 1) piece = makePiece(x, 1, invert, 'pawn', square);
             else if(y == 6) piece = makePiece(x, 6, !invert, 'pawn', square);
             else piece = null;
-            if(piece) square.data('piece', piece);
           }
         }
         
