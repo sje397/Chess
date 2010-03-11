@@ -25,7 +25,7 @@
     <div></div>
     <div class='board'>
     </div>
-    <div><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a></div>
+    <div><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
     <div id='info'></div>
   </center>
     <script>
@@ -36,12 +36,13 @@
         var boardData = [];
         var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
         var moveList = [];
-        function Move(piece, sourceSquare, firstMove, visible, takenPiece) {
+        function Move(piece, sourceSquare, firstMove, visible, takenPiece, passantPiece) {
             this.piece = piece;
             this.sourceSquare = sourceSquare;
             this.takenPiece = takenPiece;
             this.firstMove = firstMove;
             this.visible = visible;
+            this.passantPiece = passantPiece;
         }
 
         // we've already eliminated:
@@ -170,7 +171,8 @@
           }
           if(targetPiece) targetPiece.hide();
 
-          $('.passant').removeClass('passant');
+          var passantPiece = $('.passant'); 
+          if(passantPiece) passantPiece.removeClass('passant');
 
           targetSquare.data('piece', piece);
           piece.data('square', targetSquare);
@@ -193,10 +195,10 @@
               var rook, nx, y = sourceSquare.data('y');
               if(targetSquare.data('x') > sourceSquare.data('x')) {
                   rook = boardData[y][7].data('piece');
-                  nx = invert ? 4 : 5;
+                  nx = 5;
               } else {
                   rook = boardData[y][0].data('piece');
-                  nx = invert ? 2 : 3;
+                  nx = 3;
               }
               rook.data('square').removeData('piece');
               rook.data('square', boardData[y][nx]);
@@ -218,7 +220,7 @@
             piece
               .css('left', '' + targetSquare[0].offsetLeft + 'px')
               .css('top', '' + targetSquare[0].offsetTop + 'px');
-          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece)); 
+          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece)); 
         }
 
         function undoMove() {
@@ -233,11 +235,17 @@
                 .css('left', '' + move.sourceSquare[0].offsetLeft + 'px')
                 .css('top', '' + move.sourceSquare[0].offsetTop + 'px');
 
+            move.piece.removeClass('passant');
+            if(move.passantPiece) move.passantPiece.addClass('passant');
             targetSquare.removeData('piece');
             move.piece.data('square', move.sourceSquare);
             move.sourceSquare.data('piece', move.piece);
             if(move.takenPiece) {
                 move.takenPiece.data('square').data('piece', move.takenPiece);
+                // reset position in case the board has been flipped
+                move.takenPiece
+                  .css('left', '' + move.takenPiece.data('square')[0].offsetLeft + 'px')
+                  .css('top', '' + move.takenPiece.data('square')[0].offsetTop + 'px');
                 move.takenPiece.show();
             }
             if(move.firstMove) move.piece.removeClass('hasMoved');
@@ -245,10 +253,10 @@
                 // restore castle
                 var rook, nx, y = move.sourceSquare.data('y');
                 if(targetSquare.data('x') > move.sourceSquare.data('x')) {
-                    rook = boardData[y][invert ? 4 : 5].data('piece');
+                    rook = boardData[y][5].data('piece');
                     nx = 7;
                 } else {
-                    rook = boardData[y][invert ? 2 : 3].data('piece');
+                    rook = boardData[y][3].data('piece');
                     nx = 0;
                 }
                 rook.data('square').removeData('piece');
@@ -269,8 +277,6 @@
           var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
             .css('width', '' + sw + 'px')
             .css('height', '' + sh + 'px')
-            .css('left', '' + (x * sw) + 'px')
-            .css('top', '' + (y * sh) + 'px')
             .append(img);
           board.append(piece);
           // must be done after adding to board, or the position becomes relative?!?!
@@ -282,6 +288,18 @@
           square.data('piece', piece);
           return piece;
         }
+
+        function placePieces() {
+            for(var y = 0; y < 8; y++) {
+                for(var x = 0; x < 8; x++) {
+                    var square = boardData[y][x], piece = square.data('piece');
+                    if(piece) 
+                      piece
+                        .css('left', '' + square[0].offsetLeft + 'px')
+                        .css('top', '' + square[0].offsetTop + 'px')
+                }
+            }
+          }
 
         for(var y = 0; y < 8; y++) {
           boardData[y] = [];
@@ -295,26 +313,42 @@
                 cursor: 'pointer',
                 drop: dropFunc
               });
-            board.append(square);
+              //.html('(' + x + ', ' + y + ')');
+            invert ? board.prepend(square) : board.append(square);
             square.data('x', x)
              .data('y', y);
             
             boardData[y][x] = square;
             
             if(y == 0 || y == 7) {
-              var typ = types[invert ? (7 - x) : x];
-              if(y == 0) makePiece(x, 0, invert, typ, square);
-              if(y == 7) makePiece(x, 7, !invert, typ, square);
+              var typ = types[x];
+              if(y == 0) makePiece(x, 0, false, typ, square);
+              if(y == 7) makePiece(x, 7, true, typ, square);
             }
-            else if(y == 1) makePiece(x, 1, invert, 'pawn', square);
-            else if(y == 6) makePiece(x, 6, !invert, 'pawn', square);
+            else if(y == 1) makePiece(x, 1, false, 'pawn', square);
+            else if(y == 6) makePiece(x, 6, true, 'pawn', square);
           }
         }
 
+        placePieces();
+
+        function flip() {
+            invert = !invert;
+            for(var y = 0; y < 8; y++) {
+                for(var x = 0; x < 8; x++) {
+                    var square = boardData[y][x];
+                    //square.remove();
+                    invert ? board.prepend(square) : board.append(square);
+                }
+            }
+            placePieces();
+        }
+        
         $('#undo').click(undoMove);
         $('#reset').click(function() {
             while(moveList.length) undoMove();
         });
+        $('#flip').click(flip);
         
       });
     </script>
