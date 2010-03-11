@@ -380,7 +380,6 @@
             $('.bsq').html('<img src="images/' + blackSquareImage + '" width="' + sw + '" height="' + sh + '" alt="black square"/>');
             for(var i in types) {
               var typ = types[i];
-              console.log('setting image for type ' + typ);
               $('.wpc.' + typ).html('<img src="images/' + whitePieceType + '-' + typ + '.png" width="' + sw + '" height="' + sh + '" alt="white ' + typ + '"/>');
               $('.bpc.' + typ).html('<img src="images/' + blackPieceType + '-' + typ + '.png" width="' + sw + '" height="' + sh + '" alt="black ' + typ + '"/>');
             }
