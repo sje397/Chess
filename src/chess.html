@@ -149,7 +149,6 @@
         function acceptFunc(piece) {
             if(piece.hasClass('wpc') != whiteMove) return false;
             var sq = $(this), sourceSquare = piece.data('square');
-            console.log('acceptFunc called for square at (' + sq.data('x') + ', ' + sq.data('y') + ')');
             if(sq.data('x') == sourceSquare.data('x') && sq.data('y') == sourceSquare.data('y')) return false;
             var targetPiece = sq.data('piece');
             if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc'))) return false;
@@ -164,8 +163,6 @@
         }
 
         function doMove(piece, targetSquare, visible) {
-          if(visible)
-              console.log('committing move');
           var sourceSquare = piece.data('square');
           sourceSquare.removeData('piece');
 
