@@ -8,15 +8,9 @@
     <style>
       .board {width: 800px; height: 800px; border: 2px solid darkgrey; position: relative;}
       .square {float: left;}
-      /*.wsq {background-color: lightgrey;}*/
-      .wsq {background-image:url('images/white-marble.jpg');}
-      /*.bsq {background-color: grey;}*/
-      .bsq {background-image:url('images/grey-marble.jpg');}
-      .dropHover {background-color: yellow; background-image: none}
-      /*.dropActive {background-color: lightblue; background-image: none}*/
+      .dropHover {background-color: yellow;}
+      .dropHover > img {display: none;}
       .piece {position: absolute;}
-      /*.wpc {background-color: white; color: black;}*/
-      /*.bpc {background-color: black; color: white;}*/
     </style>
   </head>
   <body>
@@ -27,16 +21,94 @@
     <div class='board'>
     </div>
     <div><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
-    <div id='info'></div>
+    <div id='config'>
+    	<form id='configForm'>
+ 				<fieldset>
+ 					<table>
+ 						<tr>
+ 							<td><label for='wpcType'>White pieces:</label></td>
+ 							<td><select id='wpcType'>
+ 							  <option value='black'>Shiny black</option>
+ 							  <option value='caution'>Caution</option>
+ 							  <option value='cloth'>Cloth</option>
+ 							  <option value='denim'>Denim</option>
+ 							  <option value='glass'>Glass</option>
+ 							  <option value='greencheck'>Green check</option>
+ 							  <option value='metal'>Brushed metal</option>
+ 							  <option value='orange'>Fiery orange</option>
+ 							  <option value='paper'>Paper</option>
+ 							  <option value='purple'>Purple space</option>
+ 							  <option value='red'>Red</option>
+ 							  <option value='silver'>Silver</option>
+ 							  <option value='wood'>Wood</option>
+ 							</select></td>
+ 							<td><label for='bpcType'>Black pieces:</label></td>
+ 							<td><select id='bpcType'>
+ 							  <option value='black'>Shiny black</option>
+ 							  <option value='caution'>Caution</option>
+ 							  <option value='cloth'>Cloth</option>
+ 							  <option value='denim'>Denim</option>
+ 							  <option value='glass'>Glass</option>
+ 							  <option value='greencheck'>Green check</option>
+ 							  <option value='metal'>Brushed metal</option>
+ 							  <option value='orange'>Fiery orange</option>
+ 							  <option value='paper'>Paper</option>
+ 							  <option value='purple'>Purple space</option>
+ 							  <option value='red'>Red</option>
+ 							  <option value='silver'>Silver</option>
+ 							  <option value='wood'>Wood</option>
+ 							</select></td>
+ 							<td><label for='wsqType'>White squares:</label></td>
+ 							<td><select id='wsqType'>
+	 							<option value='dark-wood.jpg'>Dark wood</option>
+	 							<option value='grain-wood.jpg'>Grain wood</option>
+	 							<option value='grey-marble.jpg'>Grey marble</option>
+	 							<option value='grey-wood.jpg'>Grey wood</option>
+	 							<option value='light-wood.jpg'>Light wood</option>
+	 							<option value='white-marble.jpg'>White marble</option>
+ 							</select></td>
+ 							<td><label for='bsqType'>Black squares:</label></td>
+ 							<td><select id='bsqType'>
+	 							<option value='dark-wood.jpg'>Dark wood</option>
+	 							<option value='grain-wood.jpg'>Grain wood</option>
+	 							<option value='grey-marble.jpg'>Grey marble</option>
+	 							<option value='grey-wood.jpg'>Grey wood</option>
+	 							<option value='light-wood.jpg'>Light wood</option>
+	 							<option value='white-marble.jpg'>White marble</option>
+ 							</select></td>
+ 						</tr>
+ 					</table>
+ 				</fieldset>
+    	</form>
+    </div>
   </center>
     <script>
       $(function() {
         var invert = false;
-        var whitePieceType = 'paper', blackPieceType = 'cloth';
+        var whitePieceType = 'paper', 
+        	blackPieceType = 'cloth',
+        	whiteSquareImage = 'light-wood.jpg',
+        	blackSquareImage = 'dark-wood.jpg';
+
+    		$('#wpcType').val(whitePieceType);
+    		$('#bpcType').val(blackPieceType);
+    		$('#wsqType').val(whiteSquareImage);
+    		$('#bsqType').val(blackSquareImage);
+
+    		function setOptions() {
+        		whitePieceType = $('#wpcType').val();
+        		blackPieceType = $('#bpcType').val();
+        		whiteSquareImage = $('#wsqType').val();
+        		blackSquareImage = $('#bsqType').val();
+        		setImages();
+    		}
+    		$('select').change(setOptions);
+        		
         var whiteMove = true;
         var board = $('.board');
         var boardData = [];
         var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
+        
         var moveList = [];
         function Move(piece, sourceSquare, firstMove, visible, takenPiece, passantPiece) {
             this.piece = piece;
@@ -143,8 +215,6 @@
             undoMove();
             return inCheck;
         }
-
-        var types = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
 
         function acceptFunc(piece) {
             if(piece.hasClass('wpc') != whiteMove) return false;
@@ -277,13 +347,11 @@
 
         // create the board
         function makePiece(x, y, isWhite, typ, square) {
-          var img = ('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
           var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
             .css('width', '' + sw + 'px')
             .css('height', '' + sh + 'px')
             .data('square', square)
-            .data('startY', y)
-            .append(img);
+            .data('startY', y);
           board.append(piece);
           // must be done after adding to board, or the position becomes relative?!?!
           piece.draggable({   containment: 'parent', 
@@ -305,10 +373,26 @@
             }
           }
 
+        function setImages() {
+            var types = ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'];
+
+            $('.wsq').html('<img src="images/' + whiteSquareImage + '" width="' + sw + '" height="' + sh + '" alt="white square"/>');
+            $('.bsq').html('<img src="images/' + blackSquareImage + '" width="' + sw + '" height="' + sh + '" alt="black square"/>');
+            for(var i in types) {
+              var typ = types[i];
+              console.log('setting image for type ' + typ);
+              $('.wpc.' + typ).html('<img src="images/' + whitePieceType + '-' + typ + '.png" width="' + sw + '" height="' + sh + '" alt="white ' + typ + '"/>');
+              $('.bpc.' + typ).html('<img src="images/' + blackPieceType + '-' + typ + '.png" width="' + sw + '" height="' + sh + '" alt="black ' + typ + '"/>');
+            }
+        }
+
+        var rowTypes = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+
         for(var y = 0; y < 8; y++) {
           boardData[y] = [];
-	        for(var x = 0; x < 8; x++) {
-            var square = $('<div class="square ' + ((y + x) % 2 ? 'bsq' : 'wsq') + '"/>')
+          for(var x = 0; x < 8; x++) {
+            var isWhite = ((y + x) % 2 == 0);
+            var square = $('<div class="square ' + (isWhite ? 'wsq' : 'bsq') + '"/>')
               .css('width', '' + sw + 'px')
               .css('height', '' + sh + 'px')
               .data('x', x)
@@ -316,17 +400,16 @@
               .droppable({
                 accept: acceptFunc,
                 hoverClass: 'dropHover',
-                //activeClass: 'dropActive',
                 cursor: 'pointer',
                 drop: dropFunc
-              });
+               });
               //.html('(' + x + ', ' + y + ')');
             invert ? board.prepend(square) : board.append(square);
             
             boardData[y][x] = square;
             
             if(y == 0 || y == 7) {
-              var typ = types[x];
+              var typ = rowTypes[x];
               if(y == 0) makePiece(x, 0, false, typ, square);
               if(y == 7) makePiece(x, 7, true, typ, square);
             }
@@ -335,6 +418,7 @@
           }
         }
 
+        setImages();
         placePieces();
 
         function flip() {
@@ -349,7 +433,6 @@
                     square.droppable({
                         accept: acceptFunc,
                         hoverClass: 'dropHover',
-                        //activeClass: 'dropActive',
                         cursor: 'pointer',
                         drop: dropFunc
                       });
