@@ -55,9 +55,7 @@ class MainView(webapp.RequestHandler):
         self.redirect(users.create_login_url(self.request.url))
         return
       logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
-        
-      template_values.update({'user': user})
-        
+                
       if not hasattr(user.user_info(), 'access_token') and hasattr(user.user_info(), 'request_token'):
         signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
     
@@ -73,7 +71,11 @@ class MainView(webapp.RequestHandler):
         query.max_results = 500
         feed = gcontacts.GetContactsFeed(query.ToUri())
 
-        template_values.update({'feed': feed})
+        template_values.update({'contacts': feed})
+    else:
+      user = {'nickname':'dev'}
+
+    template_values.update({'user': user})
 
     path = os.path.join(os.path.dirname(__file__), 'chess.html')
     self.response.out.write(template.render(path, template_values))      

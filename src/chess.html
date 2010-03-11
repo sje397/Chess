@@ -13,17 +13,17 @@
       /*.dropHover > img {display: none;}*/
       .dropHover > img {position: relative; top: 5%; left: 5%; width: 90%; height: 90%;}
       .piece {position: absolute;}
-      #links {text-align: center; padding: 1em;}
+      div.text {text-align: center; padding: 1em;}
       #config {width: 800px;}
     </style>
   </head>
   <body>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
   <script>CFInstall.check({mode: "overlay"});</script>  
-    <div></div>
+    <div id='top' class='text'>Welcome, {{user.nickname}}</div>
     <div id='board'>
     </div>
-    <div id='links'><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
+    <div id='links' class='text'><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
     <div id='config'>
     	<form id='configForm'>
  				<fieldset>
