@@ -12,7 +12,8 @@
       .wsq {background-image:url('images/white-marble.jpg');}
       /*.bsq {background-color: grey;}*/
       .bsq {background-image:url('images/grey-marble.jpg');}
-      .dropper {background-color: yellow; background-image: none}
+      .dropHover {background-color: yellow; background-image: none}
+      /*.dropActive {background-color: lightblue; background-image: none}*/
       .piece {position: absolute;}
       /*.wpc {background-color: white; color: black;}*/
       /*.bpc {background-color: black; color: white;}*/
@@ -31,6 +32,7 @@
     <script>
       $(function() {
         var invert = false;
+        var whitePieceType = 'paper', blackPieceType = 'cloth';
         var whiteMove = true;
         var board = $('.board');
         var boardData = [];
@@ -147,10 +149,12 @@
         function acceptFunc(piece) {
             if(piece.hasClass('wpc') != whiteMove) return false;
             var sq = $(this), sourceSquare = piece.data('square');
+            console.log('acceptFunc called for square at (' + sq.data('x') + ', ' + sq.data('y') + ')');
             if(sq.data('x') == sourceSquare.data('x') && sq.data('y') == sourceSquare.data('y')) return false;
             var targetPiece = sq.data('piece');
             if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc'))) return false;
-            return legalMove(piece, sq) && !createsCheck(piece, sq);
+            if(legalMove(piece, sq)) return !createsCheck(piece, sq);
+            return false;
         }
 
         function dropFunc(event, ui) {
@@ -160,18 +164,21 @@
         }
 
         function doMove(piece, targetSquare, visible) {
+          if(visible)
+              console.log('committing move');
           var sourceSquare = piece.data('square');
           sourceSquare.removeData('piece');
 
+          var passantPiece = $('.passant'); 
+
           var targetPiece = targetSquare.data('piece');
-          if(!targetPiece && piece.hasClass('pawn') && sourceSquare.data('x') != targetSquare.data('x')) {
+          if(!targetPiece && passantPiece && piece.hasClass('pawn') && sourceSquare.data('x') != targetSquare.data('x')) {
               // we are taking en passant
-              targetPiece = $('.passant');
+              targetPiece = passantPiece;
               targetPiece.data('square').removeData('piece');
           }
           if(targetPiece) targetPiece.hide();
 
-          var passantPiece = $('.passant'); 
           if(passantPiece) passantPiece.removeClass('passant');
 
           targetSquare.data('piece', piece);
@@ -186,7 +193,7 @@
               var isWhite = piece.hasClass('wpc');
               // TODO: allow promotion to rook, bishop, knight or queen
               piece.removeClass('pawn').addClass('queen')
-                .html('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+                .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
             }
           }
 
@@ -273,18 +280,18 @@
 
         // create the board
         function makePiece(x, y, isWhite, typ, square) {
-          var img = ('<img src="images/' + (isWhite ? 'paper' : 'cloth') + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+          var img = ('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + typ + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
           var piece = $('<div class="piece ' + (isWhite ? 'wpc' : 'bpc') + ' ' + typ + '"/>')
             .css('width', '' + sw + 'px')
             .css('height', '' + sh + 'px')
+            .data('square', square)
+            .data('startY', y)
             .append(img);
           board.append(piece);
           // must be done after adding to board, or the position becomes relative?!?!
           piece.draggable({   containment: 'parent', 
                               stack: { group: '.piece', min: 1 },
                               revert: 'invalid' });
-          piece.data('square', square)
-            .data('startY', y);
           square.data('piece', piece);
           return piece;
         }
@@ -307,16 +314,17 @@
             var square = $('<div class="square ' + ((y + x) % 2 ? 'bsq' : 'wsq') + '"/>')
               .css('width', '' + sw + 'px')
               .css('height', '' + sh + 'px')
+              .data('x', x)
+              .data('y', y)
               .droppable({
                 accept: acceptFunc,
-                hoverClass: 'dropper',
+                hoverClass: 'dropHover',
+                //activeClass: 'dropActive',
                 cursor: 'pointer',
                 drop: dropFunc
               });
               //.html('(' + x + ', ' + y + ')');
             invert ? board.prepend(square) : board.append(square);
-            square.data('x', x)
-             .data('y', y);
             
             boardData[y][x] = square;
             
@@ -339,6 +347,15 @@
                     var square = boardData[y][x];
                     //square.remove();
                     invert ? board.prepend(square) : board.append(square);
+                    // recreate droppable (workaround reverted position bug?)
+                    square.droppable('destroy');
+                    square.droppable({
+                        accept: acceptFunc,
+                        hoverClass: 'dropHover',
+                        //activeClass: 'dropActive',
+                        cursor: 'pointer',
+                        drop: dropFunc
+                      });
                 }
             }
             placePieces();
