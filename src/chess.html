@@ -6,21 +6,24 @@
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>
     <style>
-      .board {width: 800px; height: 800px; border: 2px solid darkgrey; position: relative;}
+    	div {margin-left: auto; margin-right: auto;}
+      #board {width: 800px; height: 800px; border: 2px solid darkgrey; position: relative;}
       .square {float: left;}
       .dropHover {background-color: yellow;}
-      .dropHover > img {display: none;}
+      /*.dropHover > img {display: none;}*/
+      .dropHover > img {position: relative; top: 5%; left: 5%; width: 90%; height: 90%;}
       .piece {position: absolute;}
+      #links {text-align: center; padding: 1em;}
+      #config {width: 800px;}
     </style>
   </head>
   <body>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
   <script>CFInstall.check({mode: "overlay"});</script>  
-  <center>
     <div></div>
-    <div class='board'>
+    <div id='board'>
     </div>
-    <div><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
+    <div id='links'><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
     <div id='config'>
     	<form id='configForm'>
  				<fieldset>
@@ -66,6 +69,11 @@
 	 							<option value='grey-wood.jpg'>Grey wood</option>
 	 							<option value='light-wood.jpg'>Light wood</option>
 	 							<option value='white-marble.jpg'>White marble</option>
+	 							<option value='grass1.jpg'>Grass 1</option>
+	 							<option value='grass2.jpg'>Grass 2</option>
+	 							<option value='grass3.jpg'>Grass 3</option>
+	 							<option value='leaves1.jpg'>Leaves 1</option>
+	 							<option value='leaves2.jpg'>Leaves 2</option>
  							</select></td>
  							<td><label for='bsqType'>Black squares:</label></td>
  							<td><select id='bsqType'>
@@ -75,13 +83,17 @@
 	 							<option value='grey-wood.jpg'>Grey wood</option>
 	 							<option value='light-wood.jpg'>Light wood</option>
 	 							<option value='white-marble.jpg'>White marble</option>
+	 							<option value='grass1.jpg'>Grass 1</option>
+	 							<option value='grass2.jpg'>Grass 2</option>
+	 							<option value='grass3.jpg'>Grass 3</option>
+	 							<option value='leaves1.jpg'>Leaves 1</option>
+	 							<option value='leaves2.jpg'>Leaves 2</option>
  							</select></td>
  						</tr>
  					</table>
  				</fieldset>
     	</form>
     </div>
-  </center>
     <script>
       $(function() {
         var invert = false;
@@ -105,7 +117,7 @@
     		$('select').change(setOptions);
         		
         var whiteMove = true;
-        var board = $('.board');
+        var board = $('#board');
         var boardData = [];
         var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
         
@@ -374,14 +386,13 @@
           }
 
         function setImages() {
+            $('.wsq').html('<img src="images/' + whiteSquareImage + '" width="100%" height="100%" alt="white square"/>');
+            $('.bsq').html('<img src="images/' + blackSquareImage + '" width="100%" height="100%" alt="black square"/>');
             var types = ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'];
-
-            $('.wsq').html('<img src="images/' + whiteSquareImage + '" width="' + sw + '" height="' + sh + '" alt="white square"/>');
-            $('.bsq').html('<img src="images/' + blackSquareImage + '" width="' + sw + '" height="' + sh + '" alt="black square"/>');
             for(var i in types) {
               var typ = types[i];
-              $('.wpc.' + typ).html('<img src="images/' + whitePieceType + '-' + typ + '.png" width="' + sw + '" height="' + sh + '" alt="white ' + typ + '"/>');
-              $('.bpc.' + typ).html('<img src="images/' + blackPieceType + '-' + typ + '.png" width="' + sw + '" height="' + sh + '" alt="black ' + typ + '"/>');
+              $('.wpc.' + typ).html('<img src="images/' + whitePieceType + '-' + typ + '.png" width="100%" height="' + sh + '" alt="white ' + typ + '"/>');
+              $('.bpc.' + typ).html('<img src="images/' + blackPieceType + '-' + typ + '.png" width="100%" height="' + sh + '" alt="black ' + typ + '"/>');
             }
         }
 
