@@ -15,6 +15,7 @@
       .piece {position: absolute;}
       div.text {text-align: center; padding: 1em;}
       #config {width: 800px;}
+      #links {height: 2em;}
       #promoteDialog {width: 400px; height: 100px;}
     </style>
   </head>
@@ -25,7 +26,12 @@
     <div id='top' class='text'>Welcome, {{user.nickname}}</div>
     <div id='board'>
     </div>
-    <div id='links' class='text'><a href='#' id='undo'>Undo</a>&nbsp;<a href='#' id='reset'>Reset</a>&nbsp;<a href='#' id='flip'>Flip</a></div>
+    <div id='links' class='text'>
+    	<a href='#' id='undo'>Undo</a>&nbsp;
+    	<a href='#' id='reset'>Reset</a>&nbsp;
+    	<a href='#' id='flip'>Flip</a>&nbsp;
+    	<img id='checkMark' src='images/red-check.jpg' height='100%' align='top' style='display:none'>
+    </div>
     <div id='config'>
     	<form id='configForm'>
  				<fieldset>
@@ -203,7 +209,7 @@
             var enemyPieces = $('.piece.' + (isWhite ? 'bpc' : 'wpc'));
             for(var i = 0; i < enemyPieces.length; i++) {
                 var piece = $(enemyPieces[i]);
-                // creating check for yourself doesn't matter, according
+                // enemy creating check for themselves doesn't matter, according
                 // to http://www.chessvariants.com/d.chess/faq.html
                 if(legalMove(piece, square)) {// && !createsCheck(piece, square)) { 
                     return true;
@@ -248,6 +254,17 @@
           doMove(piece, targetSquare, true);
         }
 
+        function checkCheck() {
+            var inCheck = false;
+            $('.king').each(function() {
+                var square = $(this).data('square');
+                var isWhite = $(this).hasClass('wpc');
+                if(inDanger(square, isWhite)) inCheck = true;
+            });
+            if(inCheck) $('#checkMark').show();
+            else $('#checkMark').hide();
+        }
+        
         function doMove(piece, targetSquare, visible) {
           var sourceSquare = piece.data('square');
           sourceSquare.removeData('piece');
@@ -334,10 +351,12 @@
 
           whiteMove = !whiteMove;
 
-          if(visible)
+          if(visible) {
             piece
               .css('left', '' + targetSquare[0].offsetLeft + 'px')
               .css('top', '' + targetSquare[0].offsetTop + 'px');
+            checkCheck();
+          }
           moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece, promotion)); 
         }
 
@@ -393,6 +412,7 @@
                     .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
                     .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
             }
+            if(move.visible) checkCheck();
         }
 
         // create the board
