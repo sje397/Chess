@@ -196,7 +196,8 @@
         }
 
         function inDanger(square, isWhite) {
-            var enemyPieces = $('.' + (isWhite ? 'bpc' : 'wpc'));
+            // use class piece to distinguish from taken peices
+            var enemyPieces = $('.piece.' + (isWhite ? 'bpc' : 'wpc'));
             for(var i = 0; i < enemyPieces.length; i++) {
                 var piece = $(enemyPieces[i]);
                 // creating check for yourself doesn't matter, according
@@ -256,7 +257,10 @@
               targetPiece = passantPiece;
               targetPiece.data('square').removeData('piece');
           }
-          if(targetPiece) targetPiece.hide();
+          if(targetPiece) {
+              targetPiece.hide();
+              targetPiece.removeClass('piece');
+          }
 
           if(passantPiece) passantPiece.removeClass('passant');
 
@@ -333,6 +337,7 @@
                   .css('left', '' + move.takenPiece.data('square')[0].offsetLeft + 'px')
                   .css('top', '' + move.takenPiece.data('square')[0].offsetTop + 'px');
                 move.takenPiece.show();
+                move.takenPiece.addClass('piece');
             }
             if(move.firstMove) move.piece.removeClass('hasMoved');
             if(move.piece.hasClass('king') && Math.abs(targetSquare.data('x') - move.sourceSquare.data('x')) == 2) {
