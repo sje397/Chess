@@ -7,7 +7,7 @@
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>
     <style>
     	div {margin-left: auto; margin-right: auto;}
-      #board {width: 800px; height: 800px; border: 2px solid darkgrey; position: relative;}
+      #board {width: 640px; height: 640px; border: 2px solid darkgrey; position: relative;}
       .square {float: left;}
       .dropHover {background-color: yellow;}
       /*.dropHover > img {display: none;}*/
@@ -15,11 +15,13 @@
       .piece {position: absolute;}
       div.text {text-align: center; padding: 1em;}
       #config {width: 800px;}
+      #promoteDialog {width: 400px; height: 100px;}
     </style>
   </head>
   <body>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
-  <script>CFInstall.check({mode: "overlay"});</script>  
+  <script>CFInstall.check({mode: "overlay"});</script>
+  	<div id='promoteDialog' style='display: none'></div>
     <div id='top' class='text'>Welcome, {{user.nickname}}</div>
     <div id='board'>
     </div>
@@ -122,13 +124,14 @@
         var w = board.width(), h = board.height(), sw = w / 8, sh = h / 8, square;
         
         var moveList = [];
-        function Move(piece, sourceSquare, firstMove, visible, takenPiece, passantPiece) {
+        function Move(piece, sourceSquare, firstMove, visible, takenPiece, passantPiece, promotion) {
             this.piece = piece;
             this.sourceSquare = sourceSquare;
             this.takenPiece = takenPiece;
             this.firstMove = firstMove;
             this.visible = visible;
             this.passantPiece = passantPiece;
+            this.promotion = promotion;
         }
 
         // we've already eliminated:
@@ -183,8 +186,8 @@
                 }
                 
             } else if(piece.hasClass('pawn')) {
-                if(piece.data('startY') == 1 && ty <= sy) return false;
-                if(piece.data('startY') == 6 && ty >= sy) return false;
+                if(piece.hasClass('bpc') && ty <= sy) return false;
+                if(piece.hasClass('wpc') && ty >= sy) return false;
                 if(Math.abs(sx - tx) > 1) return false;
                 if(sx == tx) return (Math.abs(sy - ty) <= (piece.hasClass('hasMoved') ? 1 : 2) && !boardData[ty][tx].data('piece'));
                 if(sx != tx) return (Math.abs(sy - ty) == 1 
@@ -268,15 +271,40 @@
           piece.data('square', targetSquare);
 
           // pawns are special
+          var promotion = false;
           if(piece.hasClass('pawn')) {
             //promote pawns
             if(Math.abs(sourceSquare.data('y') - targetSquare.data('y')) == 2) 
                 piece.addClass('passant');
-            if(Math.abs(piece.data('startY') - targetSquare.data('y')) == 6) {
+            if(visible && (targetSquare.data('y') == 0 || targetSquare.data('y') == 7)) {
               var isWhite = piece.hasClass('wpc');
-              // TODO: allow promotion to rook, bishop, knight or queen
-              piece.removeClass('pawn').addClass('queen')
-                .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+              promotion = true;
+              $('#promoteDialog').empty()
+                .append('<img class="promote queen" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>')
+                .append('<img class="promote bishop" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-bishop.png" width="' + (sw) + '" height="' + (sh) + '"/>')
+                .append('<img class="promote knight" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-knight.png" width="' + (sw) + '" height="' + (sh) + '"/>')
+                .append('<img class="promote rook" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-rook.png" width="' + (sw) + '" height="' + (sh) + '"/>')
+                .dialog({
+                  title: 'Pawn Promotion',
+                  modal: true, resizable: false,
+                  width: 'auto', height: 'auto',
+                  promoteClass: 'queen',
+                  open: function(event, ui) {
+                    var _this = this;
+                    $('.promote', $(this)).click(function() {
+                        var promoteClass = $(this).removeClass('promote').attr('class');
+                        console.log('assigned promotion value of ' + promoteClass);
+                        $(_this).dialog('option', 'promoteClass', promoteClass);
+                        $(_this).dialog('close');
+                    });
+                    $(this).show();
+                  },
+                  close: function() {
+	                  piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
+		                  .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+	                  $(this).dialog('destroy');
+                  }
+              });
             }
           }
 
@@ -310,7 +338,7 @@
             piece
               .css('left', '' + targetSquare[0].offsetLeft + 'px')
               .css('top', '' + targetSquare[0].offsetTop + 'px');
-          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece)); 
+          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece, promotion)); 
         }
 
         function undoMove() {
@@ -340,6 +368,11 @@
                 move.takenPiece.addClass('piece');
             }
             if(move.firstMove) move.piece.removeClass('hasMoved');
+            if(move.promotion) {
+	            var isWhite = move.piece.hasClass('wpc');
+  	          move.piece.removeClass('queen bishop knight rook').addClass('pawn')
+    	          .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-pawn.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+            }
             if(move.piece.hasClass('king') && Math.abs(targetSquare.data('x') - move.sourceSquare.data('x')) == 2) {
                 // restore castle
                 var rook, nx, y = move.sourceSquare.data('y');
@@ -368,7 +401,6 @@
             .css('width', '' + sw + 'px')
             .css('height', '' + sh + 'px')
             .data('square', square)
-            .data('startY', y);
           board.append(piece);
           // must be done after adding to board, or the position becomes relative?!?!
           piece.draggable({   containment: 'parent', 
