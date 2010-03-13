@@ -31,6 +31,7 @@
     	<a href='#' id='reset'>Reset</a>&nbsp;
     	<a href='#' id='flip'>Flip</a>&nbsp;
     	<img id='checkMark' src='images/red-check.jpg' height='100%' align='top' style='display:none'>
+    	<img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
     </div>
     <div id='config'>
     	<form id='configForm'>
@@ -106,24 +107,24 @@
       $(function() {
         var invert = false;
         var whitePieceType = 'paper', 
-        	blackPieceType = 'cloth',
-        	whiteSquareImage = 'light-wood.jpg',
-        	blackSquareImage = 'dark-wood.jpg';
+          blackPieceType = 'cloth',
+          whiteSquareImage = 'light-wood.jpg',
+          blackSquareImage = 'dark-wood.jpg';
 
-    		$('#wpcType').val(whitePieceType);
-    		$('#bpcType').val(blackPieceType);
-    		$('#wsqType').val(whiteSquareImage);
-    		$('#bsqType').val(blackSquareImage);
+        $('#wpcType').val(whitePieceType);
+        $('#bpcType').val(blackPieceType);
+        $('#wsqType').val(whiteSquareImage);
+        $('#bsqType').val(blackSquareImage);
 
-    		function setOptions() {
-        		whitePieceType = $('#wpcType').val();
-        		blackPieceType = $('#bpcType').val();
-        		whiteSquareImage = $('#wsqType').val();
-        		blackSquareImage = $('#bsqType').val();
-        		setImages();
-    		}
-    		$('select').change(setOptions);
-        		
+        function setOptions() {
+            whitePieceType = $('#wpcType').val();
+            blackPieceType = $('#bpcType').val();
+            whiteSquareImage = $('#wsqType').val();
+            blackSquareImage = $('#bsqType').val();
+            setImages();
+        }
+        $('select').change(setOptions);
+
         var whiteMove = true;
         var board = $('#board');
         var boardData = [];
@@ -165,6 +166,9 @@
               tx = targetSquare.data('x'),
               ty = targetSquare.data('y');
             
+            var targetPiece = targetSquare.data('piece');
+            if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc'))) return false;
+
             if(!piece.hasClass('knight') && pieceBetween(sx, sy, tx, ty)) return false;
             if(piece.hasClass('rook')) {
                 return (sx == tx || sy == ty);
@@ -204,18 +208,21 @@
             return true;
         }
 
-        function inDanger(square, isWhite) {
+        function inDanger(square, isWhite, worryAboutCheck) {
             // use class piece to distinguish from taken peices
             var enemyPieces = $('.piece.' + (isWhite ? 'bpc' : 'wpc'));
+            var checkers = [];
             for(var i = 0; i < enemyPieces.length; i++) {
                 var piece = $(enemyPieces[i]);
                 // enemy creating check for themselves doesn't matter, according
                 // to http://www.chessvariants.com/d.chess/faq.html
-                if(legalMove(piece, square)) {// && !createsCheck(piece, square)) { 
-                    return true;
+                if(legalMove(piece, square) && (!worryAboutCheck || !createsCheck(piece, square))) { 
+                    checkers.push(piece);
                 }
             }
-            return false;
+            if(checkers.length == 0)
+              return false;
+            return checkers;
         }
 
         function createsCheck(piece, targetSquare) {
@@ -242,8 +249,6 @@
             if(piece.hasClass('wpc') != whiteMove) return false;
             var sq = $(this), sourceSquare = piece.data('square');
             if(sq.data('x') == sourceSquare.data('x') && sq.data('y') == sourceSquare.data('y')) return false;
-            var targetPiece = sq.data('piece');
-            if (targetPiece && (targetPiece.hasClass('wpc') == piece.hasClass('wpc'))) return false;
             if(legalMove(piece, sq)) return !createsCheck(piece, sq);
             return false;
         }
@@ -255,14 +260,63 @@
         }
 
         function checkCheck() {
-            var inCheck = false;
-            $('.king').each(function() {
-                var square = $(this).data('square');
-                var isWhite = $(this).hasClass('wpc');
-                if(inDanger(square, isWhite)) inCheck = true;
-            });
-            if(inCheck) $('#checkMark').show();
-            else $('#checkMark').hide();
+            var king = $('.' + (whiteMove ? 'wpc' : 'bpc') + '.king');
+            var square = king.data('square');
+            checkers = inDanger(square, whiteMove);
+            if(!checkers) {
+              $('#checkMark').hide();
+              $('#checkmateMark').hide();
+              return;
+            }
+            
+            var inCheck = true, inCheckmate = false;
+            // check for checkmate
+            // check if king can move
+            var px = square.data('x'), py = square.data('y'),
+              xmin = Math.max(px - 1, 0), xmax = Math.min(px + 1, 7),
+              ymin = Math.max(py - 1, 0), xmax = Math.min(py + 1, 7),
+              trapped = true;
+            for(var x = xmin; x <= xmax && trapped; x++) {
+                for(var y = ymin; y <= ymax && trapped; y++) {
+                    if(x == px && y == py) continue;
+
+                    var sq = boardData[y][x], targetPiece = sq.data('piece');
+                    if(legalMove(king, sq) && !createsCheck(king, sq))
+                        trapped = false;
+                }
+            }
+            if(trapped) {
+                // can we take the attacker, or interpose? not if there's more than one checker
+                if(checkers.length > 1) inCheckmate = true;
+                else {
+                    if(!inDanger(checkers[0].data('square'), !whiteMove, true)) {
+                        // can't take it - can we interpose?
+                        // not if it's a knight
+                        if(checkers[0].hasClass('knight')) inCheckmate = true;
+                        else {
+                            var cx = checkers[0].data('square').data('x'),
+                              cy = checkers[0].data('square').data('y');
+                            // not if it's adjacent
+                            if(Math.abs(py - cy) <= 1 && Math.abs(px - cx) <= 1) inCheckmate = true;
+                            else { // only leaves rooks, bishops, and queens
+                                inCheckmate = true;
+                                var xinc = (cx == px ? 0 : (cx > px ? 1 : -1)),
+                                  yinc = (cy == py ? 0 : (cy > py ? 1 : -1));
+                                var y = py + yinc;
+                                for(var x = px + xinc; x != cx || y != cy; x = x + xinc) {
+                                  if(inDanger(boardData[y][x], !whiteMove, true)) {
+                                      inCheckmate = false;
+                                      break;
+                                  }
+                                  y = y + yinc;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if(inCheckmate) $('#checkmateMark').show();
+            else $('#checkMark').show();
         }
         
         function doMove(piece, targetSquare, visible) {
@@ -290,17 +344,18 @@
           // pawns are special
           var promotion = false;
           if(piece.hasClass('pawn')) {
-            //promote pawns
             if(Math.abs(sourceSquare.data('y') - targetSquare.data('y')) == 2) 
                 piece.addClass('passant');
             if(visible && (targetSquare.data('y') == 0 || targetSquare.data('y') == 7)) {
-              var isWhite = piece.hasClass('wpc');
+              //promote pawns
+              var isWhite = piece.hasClass('wpc'),
+                pieceType = (isWhite ? whitePieceType : blackPieceType);
               promotion = true;
               $('#promoteDialog').empty()
-                .append('<img class="promote queen" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-queen.png" width="' + (sw) + '" height="' + (sh) + '"/>')
-                .append('<img class="promote bishop" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-bishop.png" width="' + (sw) + '" height="' + (sh) + '"/>')
-                .append('<img class="promote knight" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-knight.png" width="' + (sw) + '" height="' + (sh) + '"/>')
-                .append('<img class="promote rook" src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-rook.png" width="' + (sw) + '" height="' + (sh) + '"/>')
+                .append('<img class="promote queen" src="images/' + pieceType + '-queen.png" width="' + sw + '" height="' + sh + '"/>')
+                .append('<img class="promote bishop" src="images/' + pieceType + '-bishop.png" width="' + sw + '" height="' + sh + '"/>')
+                .append('<img class="promote knight" src="images/' + pieceType + '-knight.png" width="' + sw + '" height="' + sh + '"/>')
+                .append('<img class="promote rook" src="images/' + pieceType + '-rook.png" width="' + sw + '" height="' + sh + '"/>')
                 .dialog({
                   title: 'Pawn Promotion',
                   modal: true, resizable: false,
@@ -317,9 +372,9 @@
                     $(this).show();
                   },
                   close: function() {
-	                  piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
-		                  .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="' + (sw) + '" height="' + (sh) + '"/>');
-	                  $(this).dialog('destroy');
+                    piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
+                      .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="100%" height="100%"/>');
+                    $(this).dialog('destroy');
                   }
               });
             }
@@ -388,9 +443,9 @@
             }
             if(move.firstMove) move.piece.removeClass('hasMoved');
             if(move.promotion) {
-	            var isWhite = move.piece.hasClass('wpc');
-  	          move.piece.removeClass('queen bishop knight rook').addClass('pawn')
-    	          .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-pawn.png" width="' + (sw) + '" height="' + (sh) + '"/>');
+              var isWhite = move.piece.hasClass('wpc');
+              move.piece.removeClass('queen bishop knight rook').addClass('pawn')
+                .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-pawn.png" width="100%" height="100%"/>');
             }
             if(move.piece.hasClass('king') && Math.abs(targetSquare.data('x') - move.sourceSquare.data('x')) == 2) {
                 // restore castle
