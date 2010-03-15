@@ -1,0 +1,23 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta name="google-site-verification" content="ZU13UYTeRSCl6EmO3qeEMX3wvnvZJ6V4uv_uyyl6yuE" />
+	<meta http-equiv="X-UA-Compatible" content="chrome=1">
+	<link type="text/css" href="css/custom-theme/jquery-ui-1.7.2.custom.css" rel="stylesheet" />  
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>
+	<title>{% block title %}{% endblock %}</title>
+	{% block head %}
+	<style>
+	  #logout {text-align:right}
+	</style>
+	{% endblock %}
+</head>
+<body>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+  <script>CFInstall.check({mode: "overlay"});</script>
+	{% block body %}
+	<div id='logout'><span id='logout-link'><a href='{{ logoutUrl }}'>Log out</a></span></div>
+	{% endblock %}
+</body>
+</html>

@@ -44,16 +44,30 @@ def makeToken(tokenString, scope):
   token.set_token_string(tokenString)
   return token
 
-class MainView(webapp.RequestHandler):
-  def get(self):
+def authRequired(fn):
+  def authFunc(*args, **kwargs):
     user = users.get_current_user()
-    template_values = {
-      'logoutUrl': users.create_logout_url("/")
-    }
     if not dev_env:
       if not user:
         self.redirect(users.create_login_url(self.request.url))
         return
+    else:
+      user = {'nickname':'dev'}
+    kwargs.update({'user': user})
+    return fn(*args, **kwargs)
+  return authFunc
+
+class BaseView(webapp.RequestHandler):
+  def initialize(self, request, response):
+    super(BaseView, self).initialize(request, response)
+  def render_template(self, filename, template_values = {}):
+    path = os.path.join(os.path.dirname(__file__), 'templates', filename)
+    self.response.out.write(template.render(path, template_values))      
+
+class MainView(BaseView):
+  @authRequired
+  def get(self, user):
+    if not dev_env:
       logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
                 
       if not hasattr(user.user_info(), 'access_token') and hasattr(user.user_info(), 'request_token'):
@@ -64,25 +78,35 @@ class MainView(webapp.RequestHandler):
         user.updateInfo(access_token = str(access_token))
       
       if hasattr(user.user_info(), 'access_token'):
+        # TODO: if access token is not valid, renew
         gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
         #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
         
         query = gdata.contacts.service.ContactsQuery()
         query.max_results = 500
         feed = gcontacts.GetContactsFeed(query.ToUri())
-
-        template_values.update({'contacts': feed})
+        contacts = feed.entry
     else:
-      user = {'nickname':'dev'}
+      contacts = [{'title' : {'text': 'buddy number 1'}}]
 
+    template_values = {}
+    template_values.update({'logoutUrl': users.create_logout_url("/")})
     template_values.update({'user': user})
+    template_values.update({'contacts': contacts})
 
-    path = os.path.join(os.path.dirname(__file__), 'chess.html')
-    self.response.out.write(template.render(path, template_values))      
+    self.render_template('main.html', template_values)
 
+class GameView(BaseView):
+  @authRequired
+  def get(self, user):
+    template_values = {}
+    template_values.update({'logoutUrl': users.create_logout_url("/")})
+    template_values.update({'user': user})
+    self.render_template('chess.html', template_values)
 
 application = webapp.WSGIApplication(
                                      [ ('/', MainView),
+                                       ('/game', GameView),
                                       ],
                                      debug=True)
 def main():

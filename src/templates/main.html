@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Chess{% endblock %}
+{% block head %}
+	{{ block.super }}
+  <style>
+  /*div {border: 1px solid black; }*/
+  #logout {text-align:right}
+  #info {text-align:right}
+  #content {position:relative;}
+  </style>
+{% endblock %}
+{% block body %}
+	{{ block.super }}
+	<div id='title'><span><strong>Chess</strong></span></div>
+	<div id='msg'>Welcome {{ user.user_info.firstname }}!</div>
+	<div id='info'></div>
+	<div id='content'>
+		<select>
+{% for e in contacts %}
+    <option>{{ e.title.text }}</option>
+{% endfor %}
+		</select>
+	</div>
+{% endblock %}
