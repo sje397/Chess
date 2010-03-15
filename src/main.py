@@ -33,10 +33,6 @@ if not dev_env:
 
 from aeoid import users
 
-class UserData(db.Expando):
-  user = users.UserProperty
-  access_token = db.StringProperty
-
 def makeToken(tokenString, scope):
   logging.info('making key from string "%s"' % tokenString)
   oauth_input_params=gcontacts.GetOAuthInputParameters()
@@ -70,22 +66,26 @@ class MainView(BaseView):
     if not dev_env:
       logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
                 
-      if not hasattr(user.user_info(), 'access_token') and hasattr(user.user_info(), 'request_token'):
+      if not hasattr(user.user_info(), 'access_token') and user.user_info().access_token is not None and hasattr(user.user_info(), 'request_token'):
         signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
     
         access_token = gcontacts.UpgradeToOAuthAccessToken(signed_request_token)
         logging.info('access token: %s' % access_token)
         user.updateInfo(access_token = str(access_token))
       
-      if hasattr(user.user_info(), 'access_token'):
+      if hasattr(user.user_info(), 'access_token') and user.user_info().access_token is not None:
         # TODO: if access token is not valid, renew
         gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
         #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
         
         query = gdata.contacts.service.ContactsQuery()
         query.max_results = 500
-        feed = gcontacts.GetContactsFeed(query.ToUri())
-        contacts = feed.entry
+        try:
+          feed = gcontacts.GetContactsFeed(query.ToUri())
+          contacts = feed.entry
+        except:
+          user.updateInfo(access_token = None)
+          contacts = []
     else:
       contacts = [{'title' : {'text': 'buddy number 1'}}]
 
