@@ -14,12 +14,39 @@
 	<div id='title'><span><strong>Chess</strong></span></div>
 	<div id='msg'>Welcome, {{ user.nickname }}.</div>
 	<div id='info'></div>
-	<div id='content'>
-		<select>
+	<div id='newInvite'>
+	  <form method='POST'>
+		<select name='invited'>
 {% for e in contacts %}
-    <option>{{ e.title.text }}</option>
+    <option value="{{ e.email.text}}">{{ e.title.text }} ({{ e.email.text }})</option>
 {% endfor %}
 		</select>
-		<a href="game">test</a>
+		<input type='submit' value='Invite'></input>
+		</form>
 	</div>
+	<div id='invitesFrom'>
+	 <form method='POST'>
+	   <legend>Pending Invites (sent)</legend>
+	   <table id='pendingInvitesFromTable'>
+	    <tr><th>Contact</th><th>Select</th></tr>
+{% for i in invitesFrom %}
+      <tr><td>{{ i.toEmail }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
+{% endfor %}
+	   </table>
+    <input type='submit' name='submit' value='Delete selected'></input>
+	 </form>
+	</div>
+  <div id='invitesTo'>
+   <form method='POST'>
+     <legend>Pending Invites (received)</legend>
+     <table id='pendingInvitesToTable'>
+      <tr><th>Contact</th><th>Select</th></tr>
+{% for i in invitesTo %}
+      <tr><td>{{ i.fromUser.email }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
+{% endfor %}
+     </table>
+    <input type='submit' name='submit' value='Accept'></input>
+    <input type='submit' name='submit' value='Reject'></input>
+   </form>
+  </div>
 {% endblock %}

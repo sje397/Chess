@@ -15,6 +15,8 @@ import gdata.urlfetch
 import gdata.contacts
 import gdata.contacts.service
 
+import models
+
 dev_env = os.environ['SERVER_SOFTWARE'].startswith('Dev')
 
 settings = {
@@ -48,7 +50,8 @@ def authRequired(fn):
         self.redirect(users.create_login_url(self.request.url))
         return
     else:
-      user = {'nickname':'dev'}
+      user = users.User(identity_url = 'http://example.com/testAEOID', nickname = 'dev', email = 'dev@example.com', is_admin = True)
+      os.environ['aeoid.user'] = str(user._user_info_key)
     kwargs.update({'user': user})
     return fn(*args, **kwargs)
   return authFunc
@@ -87,14 +90,56 @@ class MainView(BaseView):
           user.updateInfo(access_token = None)
           contacts = []
     else:
-      contacts = [{'title' : {'text': 'buddy number 1'}}]
+      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : {'text': 'dev@example.com'}}]
 
+    invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+
+    invitesToEtc = models.Invite.gql('where toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
+    for i in invitesToEtc:
+      i.toUser = user
+    db.put(invitesToEtc) #update toUser
+    invitesTo.append(invitesToEtc)
+    
     template_values = {}
     template_values.update({'logoutUrl': users.create_logout_url("/")})
     template_values.update({'user': user})
     template_values.update({'contacts': contacts})
+    template_values.update({'invitesFrom': invitesFrom})
+    template_values.update({'invitesTo': invitesFrom})
 
     self.render_template('main.html', template_values)
+
+  @authRequired
+  def post(self, user):
+    logging.info('submit value: ' + self.request.get('submit'))
+    if self.request.get('invited'):
+      invite = models.Invite(toEmail = self.request.get('invited'))
+      invite.put()
+    if self.request.get('submit') == 'Delete':
+      invites = self.request.get('select')
+      if not isinstance(invites, list):
+        invites = [invites]
+      for i in invites:
+        invite = db.get(i)
+        invite.delete()
+    if self.request.get('submit') == 'Accept':
+      invites = self.request.get('select')
+      if not isinstance(invites, list):
+        invites = [invites]
+      for i in invites:
+        invite = db.get(i)
+        invite.status = models.INVITE_ACCEPTED
+        invite.put()
+    if self.request.get('submit') == 'Reject':
+      invites = self.request.get('select')
+      if not isinstance(invites, list):
+        invites = [invites]
+      for i in invites:
+        invite = db.get(i)
+        invite.status = models.INVITE_REJECTED
+        invite.put()
+    self.redirect('/')
 
 class GameView(BaseView):
   @authRequired
