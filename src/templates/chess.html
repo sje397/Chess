@@ -19,6 +19,11 @@
 	{{ block.super }}
   	<div id='promoteDialog' style='display: none'></div>
     <div id='top' class='text'>Welcome, {{user.nickname}}.</div>
+{% if playAsWhite == 'true' %}
+    <div id='gameInfo' class='text'>vs {{ game.blackPlayer.nickname }} ({{ game.blackPlayer.email }}) - you are White</div>
+{% else %}
+    <div id='gameInfo' class='text'>vs {{ game.whitePlayer.nickname }} ({{ game.whitePlayer.email }}) - you are Black</div>
+{% endif %}
     <div id='board' class='center'>
     </div>
 	   <div id='links' class='section text center ui-corner-all'>
@@ -31,6 +36,7 @@
 	     <img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
 	     <img id='resignedMark' src='images/white-flag.png' height='100%' align='top' style='display:none'>
 	     <span id='yourMoveMark' class='info' style='display:none'>Your Move</span>
+       <span id='stalemateMark' class='info' style='display:none'>Stalemate</span>
 	   </div>
     <script>
       $(function() {
@@ -135,8 +141,8 @@
             var checkers = [];
             for(var i = 0; i < enemyPieces.length; i++) {
                 var piece = $(enemyPieces[i]);
-                // enemy creating check for themselves doesn't matter, according
-                // to http://www.chessvariants.com/d.chess/faq.html
+                // enemy creating check for themselves doesn't matter wrt you moving into check, 
+                // according to http://www.chessvariants.com/d.chess/faq.html
                 if(legalMove(piece, square) && (!worryAboutCheck || !createsCheck(piece, square))) { 
                     checkers.push(piece);
                 }
@@ -179,6 +185,26 @@
           var targetSquare = $(this),
             piece = ui.draggable;
           doMove(piece, targetSquare, true);
+        }
+
+        function canMove(isWhite) {
+            var ret = false;
+            var pieces = $(".piece." + (isWhite ? "wpc" : "bpc"));
+            peices.each(function() {
+                for(var x = 0; x < 8 && !ret; x++) {
+                    for(var y = 0; y < 8 && !ret; y++) {
+                        // small optimisation - can't move onto our own pieces
+                        if(boardData[y][x].data('piece') && boardData[y][x].data('piece').hasClass('wpc') == isWhite)
+                            continue; 
+                        if(legalMove(piece, boardData[y][x]) && !createsCheck(piece, boardData[y][x])) {
+                            ret = piece;
+                        }
+                    }
+                }
+            });
+            if(ret) $('#stalemateMark').hide();
+            else $('#statemateMark').show();
+            return ret;
         }
 
         function checkCheck() {
@@ -265,13 +291,14 @@
         }
         
         function sendMoveString(moveStr, callback) {
+            var finished = inCheckmate || moveStr == 'resign' || !canMove(whiteMove);
             $.ajax({ url: "/gameData", type: "POST", context: document.body, 
-                data: {id: "{{ game.key }}", move: moveStr, moveNum: moves.length + 1, finish: inCheckmate || moveStr == 'resign'},
+                data: {id: "{{ game.key }}", move: moveStr, moveNum: moves.length + 1, finish: finished},
                 success: function() {
                     //window.location = "/game?id={{ game.key }}";
                     //flip();
                     moves.push(moveStr);
-                    setTimeout(update, 30000);
+                    if(!finished) setTimeout(update, 30000);
                     if(callback) callback();
                 },
                 error: function(xhr, textStatus) {
@@ -315,7 +342,29 @@
           targetSquare.data('piece', piece);
           piece.data('square', targetSquare);
 
-          // pawns are special
+          // kings are special - castling
+          if(piece.hasClass('king') && Math.abs(sourceSquare.data('x') - targetSquare.data('x')) == 2) {
+              // castle
+              var rook, nx, y = sourceSquare.data('y');
+              if(targetSquare.data('x') > sourceSquare.data('x')) {
+                  rook = boardData[y][7].data('piece');
+                  nx = 5;
+              } else {
+                  rook = boardData[y][0].data('piece');
+                  nx = 3;
+              }
+              rook.data('square').removeData('piece');
+              rook.data('square', boardData[y][nx]);
+              boardData[y][nx].data('piece', rook);
+              rook.addClass('hasMoved');
+
+              if(visible)
+                rook
+                  .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
+                  .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
+          }
+
+          // pawns are special - en passant and promotion
           var promotion = false;
           if(piece.hasClass('pawn')) {
             if(Math.abs(sourceSquare.data('y') - targetSquare.data('y')) == 2) 
@@ -361,27 +410,6 @@
 	              });
               }
             }
-          }
-
-          if(piece.hasClass('king') && Math.abs(sourceSquare.data('x') - targetSquare.data('x')) == 2) {
-              // castle
-              var rook, nx, y = sourceSquare.data('y');
-              if(targetSquare.data('x') > sourceSquare.data('x')) {
-                  rook = boardData[y][7].data('piece');
-                  nx = 5;
-              } else {
-                  rook = boardData[y][0].data('piece');
-                  nx = 3;
-              }
-              rook.data('square').removeData('piece');
-              rook.data('square', boardData[y][nx]);
-              boardData[y][nx].data('piece', rook);
-              rook.addClass('hasMoved');
-
-              if(visible)
-                rook
-                  .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
-                  .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
           }
 
           var firstMove = !piece.hasClass('hasMoved');
