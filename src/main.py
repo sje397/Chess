@@ -18,6 +18,8 @@ import gdata.urlfetch
 import gdata.contacts
 import gdata.contacts.service
 
+from django.utils import simplejson 
+
 import models
 
 dev_env = os.environ['SERVER_SOFTWARE'].startswith('Dev')
@@ -50,7 +52,7 @@ def authRequired(fn):
     user = users.get_current_user()
     if not dev_env:
       if not user:
-        self.redirect(users.create_login_url(self.request.url))
+        args[0].redirect(users.create_login_url(args[0].request.url))
         return
     else:
       user = users.User(identity_url = 'http://example.com/testAEOID', nickname = 'dev', email = 'dev@example.com', is_admin = True)
@@ -72,7 +74,7 @@ class MainView(BaseView):
     if not dev_env:
       logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
                 
-      if not hasattr(user.user_info(), 'access_token') and user.user_info().access_token is not None and hasattr(user.user_info(), 'request_token'):
+      if (hasattr(user.user_info(), 'access_token') == False or user.user_info().access_token is None) and hasattr(user.user_info(), 'request_token'):
         signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
     
         access_token = gcontacts.UpgradeToOAuthAccessToken(signed_request_token)
@@ -92,9 +94,12 @@ class MainView(BaseView):
         except:
           user.updateInfo(access_token = None)
           contacts = []
+      else:
+        contacts = []
+        
     else:
-      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : {'text': 'dev@example.com'}},
-                  {'title' : {'text': 'buddy number 2'}, 'email' : {'text': 'nobody@example.com'}}]
+      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : [{'primary': 'true', 'address': 'dev@example.com'}]},
+                  {'title' : {'text': 'buddy number 2'}, 'email' : [{'primary': 'true', 'address': 'nobody@example.com'}]}]
 
     games = models.Game.gql('where finished = FALSE and whitePlayer = :1', user._user_info_key).fetch(200) 
     games.extend(models.Game.gql('where finished = False and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
@@ -201,6 +206,20 @@ class GameView(BaseView):
     else:
       self.error(500)
       
+class GameData(BaseView):
+  @authRequired
+  def get(self, user):
+    gameKeyStr = self.request.get('id')
+    if gameKeyStr:
+      game = db.get(gameKeyStr)
+      if game:
+        self.response.out.write(simplejson.dumps(game.moves))
+          #self.redirect('/game?id=' + str(game.key()))
+      else:
+        self.error(404)
+    else:
+      self.error(500)
+    
   @authRequired
   def post(self, user):
     gameKeyStr = self.request.get('id')
@@ -210,14 +229,14 @@ class GameView(BaseView):
     if gameKeyStr and move:
       game = db.get(gameKeyStr)
       if game:
-        if len(game.moves) == moveNum:
+        if len(game.moves) == moveNum - 1 and not game.finished:
           game.moves.append(move)
           game.whiteMove = not game.whiteMove
           game.finished = finish
           game.put()
-          self.redirect('/game?id=' + str(game.key()))
+          #self.redirect('/game?id=' + str(game.key()))
         else:
-          logging.warn('Out of sync move, move list length: %s, move number: %s' % (len(game.moves), moveNum))
+          logging.warn('Out of sync move, move list length: %s, move number: %s, finished: %s' % (len(game.moves), moveNum, game.finished))
           self.error(409)
       else:
         self.error(404)
@@ -256,6 +275,7 @@ class PrefsView(BaseView):
 application = webapp.WSGIApplication(
                                      [ ('/', MainView),
                                        ('/game', GameView),
+                                       ('/gameData', GameData),
                                        ('/prefs', PrefsView),
                                       ],
                                      debug=True)

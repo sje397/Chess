@@ -29,12 +29,14 @@
        <a href='#' id='resign'>Resign</a>&nbsp;
 	     <img id='checkMark' src='images/red-check.png' height='100%' align='top' style='display:none'>
 	     <img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
+	     <img id='resignedMark' src='images/white-flag.png' height='100%' align='top' style='display:none'>
+	     <span id='yourMoveMark' class='info' style='display:none'>Your Move</span>
 	   </div>
     <script>
       $(function() {
         var playAsWhite = {{ playAsWhite|lower }};
         var invert = !playAsWhite;
-        var inCheck = false, inCheckmate = false;
+        var inCheck = false, inCheckmate = false, resigned = false;
         var whitePieceType = '{{ prefs.whitePieceType }}', 
           blackPieceType = '{{ prefs.blackPieceType }}',
           whiteSquareImage = '{{ prefs.whiteSquareImage }}',
@@ -180,6 +182,9 @@
         }
 
         function checkCheck() {
+            if(whiteMove == playAsWhite) $('#yourMoveMark').show();
+            else $('#yourMoveMark').hide();
+
             var king = $('.' + (whiteMove ? 'wpc' : 'bpc') + '.king');
             var square = king.data('square');
             checkers = inDanger(square, whiteMove);
@@ -240,21 +245,52 @@
             else $('#checkMark').show();
         }
 
+        function update() {
+            $.ajax({ url: "/gameData", context: document.body, dataType: 'json',
+                data: {'id': '{{ game.key }}'},
+                success: function(data) {
+                    //window.location = "/game?id={{ game.key }}";
+                    //flip();
+                    if(moves.length < data.length) {
+	                    moves = data;
+	                    fastForward();
+                    } else {
+	                    setTimeout(update, 30000);
+                    }
+                },
+                error: function(xhr, textStatus) {
+                    setTimeout(update, 30000);
+                }
+            });
+        }
+        
+        function sendMoveString(moveStr, callback) {
+            $.ajax({ url: "/gameData", type: "POST", context: document.body, 
+                data: {id: "{{ game.key }}", move: moveStr, moveNum: moves.length + 1, finish: inCheckmate || moveStr == 'resign'},
+                success: function() {
+                    //window.location = "/game?id={{ game.key }}";
+                    //flip();
+                    moves.push(moveStr);
+                    setTimeout(update, 30000);
+                    if(callback) callback();
+                },
+                error: function(xhr, textStatus) {
+                  alert('There was an error submitting your move. Please try again.');
+                  if(moves[moves.length -1] == 'resign') {
+                      moves.pop();
+                      whiteMove = !whiteMove;
+                      $('#resignedMark').hide();
+                      $('#yourMoveMark').show();
+                  } else
+                      undoMove();
+                }
+            });
+        }
+        
         function submitMove(sourceSquare, targetSquare, promoteTo) {
-          var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "",
-            location = "/game?id={{ game.key }}&move=" + moveStr + "&moveNum={{ game.moves|length }}&finish=" + inCheckmate;
+          var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "";
           if(promoteTo) moveStr += "-" + promoteTo;
-
-          $.ajax({ url: "/game", type: "POST", context: document.body, 
-              data: {id: "{{ game.key }}", move: moveStr, moveNum: moveList.length - 1, finish: inCheckmate},
-              success: function() {
-                  window.location = "/game?id={{ game.key }}";
-              },
-              error: function(xhr, textStatus) {
-                alert('There was an error: ' + textStatus);
-                undoMove();
-              }
-          });
+          sendMoveString(moveStr);
         }
         
         function doMove(piece, targetSquare, visible, promoteTo) {
@@ -315,6 +351,7 @@
 	                  close: function() {
 	                    piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
 	                      .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="100%" height="100%"/>');
+	                    checkCheck();
 
 	                    if(visible && moveList.length == {{ game.moves|length }} + 1) {
 	                      submitMove(sourceSquare, targetSquare,$(this).dialog('option', 'promoteClass'));
@@ -360,7 +397,7 @@
               .css('top', '' + targetSquare[0].offsetTop + 'px');
             checkCheck();
 
-            if(visible && moveList.length == {{ game.moves|length }} + 1 && !$('#promoteDialog').dialog('isOpen')) {
+            if(visible && moveList.length == moves.length + 1 && !$('#promoteDialog').dialog('isOpen')) {
                 submitMove(sourceSquare, targetSquare);
             }
           }
@@ -515,25 +552,39 @@
         }
 
         function resign() {
-            
+            if(whiteMove == playAsWhite) {
+	            resigned = true;
+	            sendMoveString('resign', function() {
+	                whiteMove = !whiteMove;
+	                $('#resignedMark').show();
+	                $('#yourMoveMark').hide();
+	            });
+            }
         }
         
         function fastForward() {
-            for(var i = 0; i < moves.length; i++) {
-                var parts = moves[i].split('-'); 
-                var from = parts[0], to = parts[1];
-                var promoteTo;
-                if(parts.length == 3) promoteTo = parts[2];
-                var sx = parseInt(from.split(',')[0]),
-                  sy =  parseInt(from.split(',')[1]),
-                  tx = parseInt(to.split(',')[0]),
-                  ty =  parseInt(to.split(',')[1]);
-                var piece = boardData[sy][sx].data('piece'),
-                  square = boardData[ty][tx];
-                doMove(piece, square, true, promoteTo);
+            for(var i = moveList.length; i < moves.length; i++) {
+                if(moves[i] == 'resign'){
+                    $('#resignedMark').show();
+                } else {
+	                var parts = moves[i].split('-'); 
+	                var from = parts[0], to = parts[1];
+	                var promoteTo;
+	                if(parts.length == 3) promoteTo = parts[2];
+	                var sx = parseInt(from.split(',')[0]),
+	                  sy =  parseInt(from.split(',')[1]),
+	                  tx = parseInt(to.split(',')[0]),
+	                  ty =  parseInt(to.split(',')[1]);
+	                var piece = boardData[sy][sx].data('piece'),
+	                  square = boardData[ty][tx];
+	                doMove(piece, square, true, promoteTo);
+                }
             }
             placePieces();
             checkCheck();
+{% if game.finished %}
+            whiteMove = !playAsWhite;
+{% endif %}
         }
         
         $('#undo').click(undoMove);

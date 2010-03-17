@@ -48,7 +48,9 @@
 {% if contacts %}
 		<select name='invited'>
 {% for e in contacts %}
-    <option value="{{ e.email.text}}">{{ e.title.text }} ({{ e.email.text }})</option>
+		{% for em in e.email %}
+	    <option value="{{ em.address }}">{{ e.title.text }} ({{ em.address }})</option>
+    {% endfor %}
 {% endfor %}
 		</select>
 {% else %}

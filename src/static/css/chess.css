@@ -9,6 +9,13 @@ div.center {float:none; margin-left: auto; margin-right: auto;}
 	font-size: 2em;
 }
 
+.info {
+	font-weight: bold;
+	color: red;
+	display: block;
+	font-size: 1em;
+}
+
 .sectionTitle {
   font-weight: bold;
   display: block;
