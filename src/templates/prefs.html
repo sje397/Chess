@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Chess{% endblock %}
+{% block head %}
+  {{ block.super }}
+  <style>
+    #demo {clear:both;}
+    #demo .sq {display: inline-block; width: 80px; height: 80px;padding:10px;}
+  </style>
+{% endblock %}
+{% block body %}
+  {{ block.super }}
+  <div class='sectionGroup'>
+  <div id='intro' class='section ui-corner-all'>
+    <span id='title' class='pageTitle'>Chess<img src='images/red-king.png' height='30' align='top'></span>
+    <span>Welcome, {{ user.nickname }}.</span>
+  </div>
+    <div id='config' class='section text ui-corner-all'>
+      <form id='configForm' method='POST' action='/prefs'>
+          <table>
+            <tr>
+              <td><label for='wpcType'>White pieces:</label></td>
+              <td><select id='wpcType' name='wpcType'>
+                <option value='black'>Shiny black</option>
+                <option value='caution'>Caution</option>
+                <option value='cloth'>Cloth</option>
+                <option value='denim'>Denim</option>
+                <option value='glass'>Glass</option>
+                <option value='greencheck'>Green check</option>
+                <option value='metal'>Brushed metal</option>
+                <option value='orange'>Fiery orange</option>
+                <option value='paper'>Paper</option>
+                <option value='purple'>Purple space</option>
+                <option value='red'>Red</option>
+                <option value='silver'>Silver</option>
+                <option value='wood'>Wood</option>
+              </select></td>
+            </tr><tr>
+              <td><label for='bpcType'>Black pieces:</label></td>
+              <td><select id='bpcType' name='bpcType'>
+                <option value='black'>Shiny black</option>
+                <option value='caution'>Caution</option>
+                <option value='cloth'>Cloth</option>
+                <option value='denim'>Denim</option>
+                <option value='glass'>Glass</option>
+                <option value='greencheck'>Green check</option>
+                <option value='metal'>Brushed metal</option>
+                <option value='orange'>Fiery orange</option>
+                <option value='paper'>Paper</option>
+                <option value='purple'>Purple space</option>
+                <option value='red'>Red</option>
+                <option value='silver'>Silver</option>
+                <option value='wood'>Wood</option>
+              </select></td>
+            </tr><tr>
+              <td><label for='wsqType'>White squares:</label></td>
+              <td><select id='wsqType' name='wsqType'>
+                <option value='dark-wood.jpg'>Dark wood</option>
+                <option value='grain-wood.jpg'>Grain wood</option>
+                <option value='grey-marble.jpg'>Grey marble</option>
+                <option value='grey-wood.jpg'>Grey wood</option>
+                <option value='light-wood.jpg'>Light wood</option>
+                <option value='white-marble.jpg'>White marble</option>
+                <option value='grass1.jpg'>Grass 1</option>
+                <option value='grass2.jpg'>Grass 2</option>
+                <option value='grass3.jpg'>Grass 3</option>
+                <option value='leaves1.jpg'>Leaves 1</option>
+                <option value='leaves2.jpg'>Leaves 2</option>
+              </select></td>
+            </tr><tr>
+              <td><label for='bsqType'>Black squares:</label></td>
+              <td><select id='bsqType' name='bsqType'>
+                <option value='dark-wood.jpg'>Dark wood</option>
+                <option value='grain-wood.jpg'>Grain wood</option>
+                <option value='grey-marble.jpg'>Grey marble</option>
+                <option value='grey-wood.jpg'>Grey wood</option>
+                <option value='light-wood.jpg'>Light wood</option>
+                <option value='white-marble.jpg'>White marble</option>
+                <option value='grass1.jpg'>Grass 1</option>
+                <option value='grass2.jpg'>Grass 2</option>
+                <option value='grass3.jpg'>Grass 3</option>
+                <option value='leaves1.jpg'>Leaves 1</option>
+                <option value='leaves2.jpg'>Leaves 2</option>
+              </select></td>
+            </tr>
+          </table>
+          <input type='submit' name='submit' value='Save'></input>
+      </form>
+    </div>
+    <div id='demo'>
+      <div class='sq wsq'></div>
+      <div class='sq bsq'></div>
+      <div class='sq wpc king'></div>
+      <div class='sq bpc king'></div>
+    </div>
+    <script>
+    var whitePieceType = '{{ prefs.whitePieceType }}', 
+      blackPieceType = '{{ prefs.blackPieceType }}',
+      whiteSquareImage = '{{ prefs.whiteSquareImage }}',
+      blackSquareImage = '{{ prefs.blackSquareImage }}';
+    var sh = 540 / 8;
+    
+    $('#wpcType').val(whitePieceType);
+    $('#bpcType').val(blackPieceType);
+    $('#wsqType').val(whiteSquareImage);
+    $('#bsqType').val(blackSquareImage);
+
+    function setImages() {
+        $('.wsq').html('<img src="images/' + whiteSquareImage + '" width="100%" height="100%" alt="white square"/>');
+        $('.bsq').html('<img src="images/' + blackSquareImage + '" width="100%" height="100%" alt="black square"/>');
+        var types = ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king'];
+        for(var i in types) {
+          var typ = types[i];
+          $('.wpc.' + typ).html('<img src="images/' + whitePieceType + '-' + typ + '.png" width="100%" height="100%" alt="white ' + typ + '"/>');
+          $('.bpc.' + typ).html('<img src="images/' + blackPieceType + '-' + typ + '.png" width="100%" height="100%" alt="black ' + typ + '"/>');
+        }
+    }
+    
+    function setOptions() {
+        whitePieceType = $('#wpcType').val();
+        blackPieceType = $('#bpcType').val();
+        whiteSquareImage = $('#wsqType').val();
+        blackSquareImage = $('#bsqType').val();
+        setImages();
+    }
+    $('select').change(setOptions);
+    setImages();
+    </script>
+  </div>
+{% endblock %}

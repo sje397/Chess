@@ -3,130 +3,45 @@
 {% block head %}
 	{{ block.super }}
     <style>
-    	div {margin-left: auto; margin-right: auto;}
-      #board {width: 640px; height: 640px; border: 2px solid darkgrey; position: relative;}
+      #board {width: 560px; height: 560px; border: 2px solid darkgrey; position: relative;}
       .square {float: left;}
       .dropHover {background-color: yellow;}
       /*.dropHover > img {display: none;}*/
       .dropHover > img {position: relative; top: 5%; left: 5%; width: 90%; height: 90%;}
       .piece {position: absolute;}
-      div.text {text-align: center; padding: 1em;}
-      #config {width: 800px;}
-      #links {height: 2em;}
+      /*#config {width: 800px;}*/
       #promoteDialog {width: 400px; height: 100px;}
+      #links {height: 2em;}
+      #config form {display: inline-block;}
     </style>
 {% endblock %}
 {% block body %}
 	{{ block.super }}
   	<div id='promoteDialog' style='display: none'></div>
     <div id='top' class='text'>Welcome, {{user.nickname}}.</div>
-    <div id='board'>
+    <div id='board' class='center'>
     </div>
-    <div id='links' class='text'>
-      <a href='/' id='home'>Home</a>&nbsp;
-    	<!--<a href='#' id='undo'>Undo</a>&nbsp;-->
-    	<!-- <a href='#' id='reset'>Reset</a>&nbsp;-->
-    	<a href='#' id='flip'>Flip</a>&nbsp;
-    	<img id='checkMark' src='images/red-check.jpg' height='100%' align='top' style='display:none'>
-    	<img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
-    </div>
-    <div id='config'>
-    	<form id='configForm'>
- 				<fieldset>
- 					<table>
- 						<tr>
- 							<td><label for='wpcType'>White pieces:</label></td>
- 							<td><select id='wpcType'>
- 							  <option value='black'>Shiny black</option>
- 							  <option value='caution'>Caution</option>
- 							  <option value='cloth'>Cloth</option>
- 							  <option value='denim'>Denim</option>
- 							  <option value='glass'>Glass</option>
- 							  <option value='greencheck'>Green check</option>
- 							  <option value='metal'>Brushed metal</option>
- 							  <option value='orange'>Fiery orange</option>
- 							  <option value='paper'>Paper</option>
- 							  <option value='purple'>Purple space</option>
- 							  <option value='red'>Red</option>
- 							  <option value='silver'>Silver</option>
- 							  <option value='wood'>Wood</option>
- 							</select></td>
- 							<td><label for='bpcType'>Black pieces:</label></td>
- 							<td><select id='bpcType'>
- 							  <option value='black'>Shiny black</option>
- 							  <option value='caution'>Caution</option>
- 							  <option value='cloth'>Cloth</option>
- 							  <option value='denim'>Denim</option>
- 							  <option value='glass'>Glass</option>
- 							  <option value='greencheck'>Green check</option>
- 							  <option value='metal'>Brushed metal</option>
- 							  <option value='orange'>Fiery orange</option>
- 							  <option value='paper'>Paper</option>
- 							  <option value='purple'>Purple space</option>
- 							  <option value='red'>Red</option>
- 							  <option value='silver'>Silver</option>
- 							  <option value='wood'>Wood</option>
- 							</select></td>
- 							<td><label for='wsqType'>White squares:</label></td>
- 							<td><select id='wsqType'>
-	 							<option value='dark-wood.jpg'>Dark wood</option>
-	 							<option value='grain-wood.jpg'>Grain wood</option>
-	 							<option value='grey-marble.jpg'>Grey marble</option>
-	 							<option value='grey-wood.jpg'>Grey wood</option>
-	 							<option value='light-wood.jpg'>Light wood</option>
-	 							<option value='white-marble.jpg'>White marble</option>
-	 							<option value='grass1.jpg'>Grass 1</option>
-	 							<option value='grass2.jpg'>Grass 2</option>
-	 							<option value='grass3.jpg'>Grass 3</option>
-	 							<option value='leaves1.jpg'>Leaves 1</option>
-	 							<option value='leaves2.jpg'>Leaves 2</option>
- 							</select></td>
- 							<td><label for='bsqType'>Black squares:</label></td>
- 							<td><select id='bsqType'>
-	 							<option value='dark-wood.jpg'>Dark wood</option>
-	 							<option value='grain-wood.jpg'>Grain wood</option>
-	 							<option value='grey-marble.jpg'>Grey marble</option>
-	 							<option value='grey-wood.jpg'>Grey wood</option>
-	 							<option value='light-wood.jpg'>Light wood</option>
-	 							<option value='white-marble.jpg'>White marble</option>
-	 							<option value='grass1.jpg'>Grass 1</option>
-	 							<option value='grass2.jpg'>Grass 2</option>
-	 							<option value='grass3.jpg'>Grass 3</option>
-	 							<option value='leaves1.jpg'>Leaves 1</option>
-	 							<option value='leaves2.jpg'>Leaves 2</option>
- 							</select></td>
- 						</tr>
- 					</table>
- 				</fieldset>
-    	</form>
-    </div>
+	   <div id='links' class='section text center ui-corner-all'>
+	     <a href='/' id='home'>Home</a>&nbsp;
+	     <!-- <a href='#' id='undo'>Undo</a>&nbsp;-->
+	     <!-- <a href='#' id='reset'>Reset</a>&nbsp;-->
+	     <a href='#' id='flip'>Flip</a>&nbsp;
+	     <img id='checkMark' src='images/red-check.png' height='100%' align='top' style='display:none'>
+	     <img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
+	   </div>
     <script>
       $(function() {
         var playAsWhite = {{ playAsWhite|lower }};
         var invert = !playAsWhite;
         var inCheck = false, inCheckmate = false;
-        var whitePieceType = 'paper', 
-          blackPieceType = 'cloth',
-          whiteSquareImage = 'light-wood.jpg',
-          blackSquareImage = 'dark-wood.jpg';
+        var whitePieceType = '{{ prefs.whitePieceType }}', 
+          blackPieceType = '{{ prefs.blackPieceType }}',
+          whiteSquareImage = '{{ prefs.whiteSquareImage }}',
+          blackSquareImage = '{{ prefs.blackSquareImage }}';
         var moves = [];
 {% for m in game.moves %}
         moves.push("{{ m }}")          
 {% endfor %}
-
-        $('#wpcType').val(whitePieceType);
-        $('#bpcType').val(blackPieceType);
-        $('#wsqType').val(whiteSquareImage);
-        $('#bsqType').val(blackSquareImage);
-
-        function setOptions() {
-            whitePieceType = $('#wpcType').val();
-            blackPieceType = $('#bpcType').val();
-            whiteSquareImage = $('#wsqType').val();
-            blackSquareImage = $('#bsqType').val();
-            setImages();
-        }
-        $('select').change(setOptions);
 
         var whiteMove = true;
         var board = $('#board');
@@ -323,8 +238,25 @@
             if(inCheckmate) $('#checkmateMark').show();
             else $('#checkMark').show();
         }
+
+        function submitMove(sourceSquare, targetSquare, promoteTo) {
+          var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "",
+            location = "/game?id={{ game.key }}&move=" + moveStr + "&moveNum={{ game.moves|length }}&finish=" + inCheckmate;
+          if(promoteTo) moveStr += "-" + promoteTo;
+
+          $.ajax({ url: "/game", type: "POST", context: document.body, 
+              data: {id: "{{ game.key }}", move: moveStr, moveNum: moveList.length - 1, finish: inCheckmate},
+              success: function() {
+                  window.location = "/game?id={{ game.key }}";
+              },
+              error: function(xhr, textStatus) {
+                alert('There was an error: ' + textStatus);
+                undoMove();
+              }
+          });
+        }
         
-        function doMove(piece, targetSquare, visible) {
+        function doMove(piece, targetSquare, visible, promoteTo) {
           var sourceSquare = piece.data('square');
           sourceSquare.removeData('piece');
 
@@ -356,32 +288,40 @@
               var isWhite = piece.hasClass('wpc'),
                 pieceType = (isWhite ? whitePieceType : blackPieceType);
               promotion = true;
-              $('#promoteDialog').empty()
-                .append('<img class="promote queen" src="images/' + pieceType + '-queen.png" width="' + sw + '" height="' + sh + '"/>')
-                .append('<img class="promote bishop" src="images/' + pieceType + '-bishop.png" width="' + sw + '" height="' + sh + '"/>')
-                .append('<img class="promote knight" src="images/' + pieceType + '-knight.png" width="' + sw + '" height="' + sh + '"/>')
-                .append('<img class="promote rook" src="images/' + pieceType + '-rook.png" width="' + sw + '" height="' + sh + '"/>')
-                .dialog({
-                  title: 'Pawn Promotion',
-                  modal: true, resizable: false,
-                  width: 'auto', height: 'auto',
-                  promoteClass: 'queen',
-                  open: function(event, ui) {
-                    var _this = this;
-                    $('.promote', $(this)).click(function() {
-                        var promoteClass = $(this).removeClass('promote').attr('class');
-                        console.log('assigned promotion value of ' + promoteClass);
-                        $(_this).dialog('option', 'promoteClass', promoteClass);
-                        $(_this).dialog('close');
-                    });
-                    $(this).show();
-                  },
-                  close: function() {
-                    piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
-                      .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="100%" height="100%"/>');
-                    $(this).dialog('destroy');
-                  }
-              });
+              if(promoteTo) {
+                  piece.removeClass('pawn').addClass(promoteTo)
+                  .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + promoteTo + '.png" width="100%" height="100%"/>');
+              } else {
+	              $('#promoteDialog').empty()
+	                .append('<img class="promote queen" src="images/' + pieceType + '-queen.png" width="' + sw + '" height="' + sh + '"/>')
+	                .append('<img class="promote bishop" src="images/' + pieceType + '-bishop.png" width="' + sw + '" height="' + sh + '"/>')
+	                .append('<img class="promote knight" src="images/' + pieceType + '-knight.png" width="' + sw + '" height="' + sh + '"/>')
+	                .append('<img class="promote rook" src="images/' + pieceType + '-rook.png" width="' + sw + '" height="' + sh + '"/>')
+	                .dialog({
+	                  title: 'Pawn Promotion',
+	                  modal: true, resizable: false,
+	                  width: 'auto', height: 'auto',
+	                  promoteClass: 'queen',
+	                  open: function(event, ui) {
+	                    var _this = this;
+	                    $('.promote', $(this)).click(function() {
+	                        var promoteClass = $(this).removeClass('promote').attr('class');
+	                        $(_this).dialog('option', 'promoteClass', promoteClass);
+	                        $(_this).dialog('close');
+	                    });
+	                    $(this).show();
+	                  },
+	                  close: function() {
+	                    piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
+	                      .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="100%" height="100%"/>');
+
+	                    if(visible && moveList.length == {{ game.moves|length }} + 1) {
+	                      submitMove(sourceSquare, targetSquare,$(this).dialog('option', 'promoteClass'));
+	                    }
+	                    $(this).dialog('destroy');
+	                  }
+	              });
+              }
             }
           }
 
@@ -411,29 +351,18 @@
 
           whiteMove = !whiteMove;
 
+          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece, promotion)); 
+
           if(visible) {
             piece
               .css('left', '' + targetSquare[0].offsetLeft + 'px')
               .css('top', '' + targetSquare[0].offsetTop + 'px');
             checkCheck();
 
-            if(visible && moveList.length == {{ game.moves|length }}) {
-	            var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "",
-	              location = "/game?id={{ game.key }}&move=" + moveStr + "&moveNum={{ game.moves|length }}&finish=" + inCheckmate;
-	
-	            $.ajax({ url: "/game", type: "POST", context: document.body, 
-	                data: {id: "{{ game.key }}", move: moveStr, moveNum: moveList.length, finish: inCheckmate},
-	                success: function() {
-	                    window.location = "/game?id={{ game.key }}";
-	                },
-	                error: function(xhr, textStatus) {
-		                alert('There was an error: ' + textStatus);
-		                undoMove();
-	                }
-	            });
+            if(visible && moveList.length == {{ game.moves|length }} + 1 && !$('#promoteDialog').dialog('isOpen')) {
+                submitMove(sourceSquare, targetSquare);
             }
           }
-          moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece, promotion)); 
         }
 
         function undoMove() {
@@ -586,14 +515,17 @@
 
         function fastForward() {
             for(var i = 0; i < moves.length; i++) {
-                var from = moves[i].split('-')[0], to = moves[i].split('-')[1];
+                var parts = moves[i].split('-'); 
+                var from = parts[0], to = parts[1];
+                var promoteTo;
+                if(parts.length == 3) promoteTo = parts[2];
                 var sx = parseInt(from.split(',')[0]),
                   sy =  parseInt(from.split(',')[1]),
                   tx = parseInt(to.split(',')[0]),
                   ty =  parseInt(to.split(',')[1]);
                 var piece = boardData[sy][sx].data('piece'),
                   square = boardData[ty][tx];
-                doMove(piece, square, true)
+                doMove(piece, square, true, promoteTo);
             }
             placePieces();
             checkCheck();

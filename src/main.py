@@ -181,6 +181,11 @@ class GameView(BaseView):
       game = db.get(gameKeyStr)
       if game:
         template_values = {}
+        
+        prefs = models.Prefs.gql('where user = :1', user._user_info_key).get()
+        if not prefs:
+          prefs = models.Prefs(user = user)
+        template_values.update({'prefs': prefs})
         template_values.update({'logoutUrl': users.create_logout_url("/")})
         template_values.update({'user': user})
         template_values.update({'game': game})
@@ -212,7 +217,7 @@ class GameView(BaseView):
           game.put()
           self.redirect('/game?id=' + str(game.key()))
         else:
-          logging.info('Out of sync move, move list length: %s, move number: %s' % (len(game.moves), moveNum))
+          logging.warn('Out of sync move, move list length: %s, move number: %s' % (len(game.moves), moveNum))
           self.error(409)
       else:
         self.error(404)
@@ -220,9 +225,38 @@ class GameView(BaseView):
       self.error(500)
     
 
+class PrefsView(BaseView):
+  @authRequired
+  def get(self, user):
+    template_values = {}
+    
+    prefs = models.Prefs.gql('where user = :1', user._user_info_key).get()
+    if not prefs:
+      prefs = models.Prefs(user = user)
+    template_values.update({'prefs': prefs})
+
+    template_values.update({'logoutUrl': users.create_logout_url("/")})
+    template_values.update({'user': user})
+    self.render_template('prefs.html', template_values)
+
+  @authRequired
+  def post(self, user):
+    prefs = models.Prefs.gql('where user = :1', user._user_info_key).get()
+    if not prefs:
+      prefs = models.Prefs()
+      
+    prefs.whitePieceType = self.request.get('wpcType')
+    prefs.blackPieceType = self.request.get('bpcType')
+    prefs.whiteSquareImage = self.request.get('wsqType')
+    prefs.blackSquareImage = self.request.get('bsqType')
+    prefs.put()
+    
+    self.redirect('/')
+
 application = webapp.WSGIApplication(
                                      [ ('/', MainView),
                                        ('/game', GameView),
+                                       ('/prefs', PrefsView),
                                       ],
                                      debug=True)
 def main():

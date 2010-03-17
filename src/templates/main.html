@@ -3,28 +3,30 @@
 {% block head %}
 	{{ block.super }}
   <style>
-  /*div {border: 1px solid black; }*/
-  #logout {text-align:right}
-  #info {text-align:right}
-  #content {position:relative;}
   #games table {
-    width: 100%;
-    border: 1px solid black;
+    width: 400px;
+   }
+  #games table {
   }
-  #games table td {
-    border: 1px solid black;
-    text-align: center;
+  #newInvite {
+    clear:both;
+  }
+  div {
   }
   </style>
 {% endblock %}
 {% block body %}
 	{{ block.super }}
-	<div id='content'>
-	<div id='title'><span><strong>Chess</strong></span></div>
-	<div id='msg'>Welcome, {{ user.nickname }}.</div>
-	<div id='info'></div>
+	<div class='sectionGroup'>
+	<div id='intro' class='section ui-corner-all'>
+  	<span id='title' class='pageTitle'>Chess<img src='images/red-king.png' height='30' align='top'></span>
+	  <span>Welcome, {{ user.nickname }}.</span>
+	  <a href='/prefs'>prefs</a>
+	</div>
 {% if games %}
-	<div id='games'>
+	<div id='games' class='section ui-corner-all'>
+	   <span class='sectionTitle'>Games</span>
+	   <center>
      <table id='gamesTable'>
       <tr><th>White</th><th>Black</th><th>Moves</th><th></th></tr>
 {% for g in games %}
@@ -35,12 +37,14 @@
 {% endif %}
 {% endfor %}
      </table>
+     </center>
 	</div>
 {% endif %}
-	<div id='newInvite'>
+  </div>
+  <div class='sectionGroup'>
+	<div id='newInvite' class='section ui-corner-all'>
+    <span class='sectionTitle'>Start a new game</span>
 	  <form method='POST'>
-	  <fieldset>
-	  <legend>Start a new game</legend>
 {% if contacts %}
 		<select name='invited'>
 {% for e in contacts %}
@@ -54,41 +58,42 @@
 {% if contacts %}
     <a href='http://www.google.com/contacts'>Manage Contacts</a>
 {% endif %}    
-		</fieldset>
 		</form>
 	</div>
+	</div>
+	<div class='sectionGroup'>
 {% if invitesFrom %}
-	<div id='invitesFrom'>
-	 <form method='POST'>
-	   <fieldset>
-	   <legend>Pending Invites (sent)</legend>
-	   <table id='pendingInvitesFromTable'>
-	    <tr><th>Contact</th><th>Select</th></tr>
+	<div id='invitesFrom' class='section ui-corner-all'>
+    <span class='sectionTitle'>Pending Invites (sent)</span>
+	  <form method='POST'>
+	   <table>
+	    <tr><th>Contact</th><th>Email</th><th>Select</th></tr>
 {% for i in invitesFrom %}
-      <tr><td>{{ i.toEmail }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
+{% if i.toUser %}
+      <tr><td>{{ i.toUser.nickname }}</td><td>{{ i.toUser.email }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
+{% else %}
+      <tr><td>Unknown</td><td>{{ i.toEmail }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
+{% endif %}
 {% endfor %}
 	   </table>
       <input type='submit' name='submit' value='Delete'></input>
-	   </fieldset>
 	 </form>
 	</div>
 {% endif %}
 {% if invitesTo %}
-  <div id='invitesTo'>
+  <div id='invitesTo' class='section ui-corner-all'>
+   <span class='sectionTitle'>Pending Invites (received)</span>
    <form method='POST'>
-     <fieldset>
-     <legend>Pending Invites (received)</legend>
      <table id='pendingInvitesToTable'>
-      <tr><th>Contact</th><th>Select</th></tr>
+      <tr><th>Contact</th><th>Email</th><th>Select</th></tr>
 {% for i in invitesTo %}
-      <tr><td>{{ i.fromUser.email }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
+      <tr><td>{{ i.fromUser.nickname }}</td><td>{{ i.fromUser.email }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
 {% endfor %}
      </table>
     <input type='submit' name='submit' value='Accept'></input>
     <input type='submit' name='submit' value='Reject'></input>
-    </fieldset>
    </form>
   </div>
-  </div>
 {% endif %}
+  </div>
 {% endblock %}

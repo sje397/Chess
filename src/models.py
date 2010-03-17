@@ -28,3 +28,10 @@ class Game(db.Model):
   def myMove(self):
     return (self.whiteMove and self.whitePlayer.user_id() == users.get_current_user().user_id()) \
        or (not self.whiteMove and self.blackPlayer.user_id() == users.get_current_user().user_id())
+
+class Prefs(db.Expando):
+  user = users.UserProperty(required = True, auto_current_user_add = True)
+  whitePieceType = db.StringProperty(default='paper') 
+  blackPieceType = db.StringProperty(default='cloth')
+  whiteSquareImage = db.StringProperty(default='white-marble.jpg')
+  blackSquareImage = db.StringProperty(default='grey-marble.jpg')

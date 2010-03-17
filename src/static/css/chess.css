@@ -1,0 +1,60 @@
+#topnav {position: absolute; right: 0px; top: 0px; text-align:right; margin: 10px; padding: 10px}
+
+div.text {text-align: center; padding: 1em;}
+div.center {float:none; margin-left: auto; margin-right: auto;}
+
+.pageTitle {
+	font-weight: bold;
+	display: block;
+	font-size: 2em;
+}
+
+.sectionTitle {
+  font-weight: bold;
+  display: block;
+}
+
+.section {
+  background-image: url("/images/cyan-gradient.png");
+  background-repeat: repeat-x;
+  background-position: 0% 0%;
+  float:left;
+  padding: 10px;
+  margin: 10px;
+}
+
+.section_old {
+  background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#323232), to(#F0F0f0), color-stop(.5, #a0a0a0));
+  float:left;
+  padding: 10px;
+  margin: 10px;
+}
+
+.sectionGroup {
+	clear: both;
+}
+
+table {
+	margin: 10px;
+  background-color: white;
+  border: 1px solid gray;
+  border-spacing: 0px;
+  border-collapse: collapse;
+}
+
+table td {
+	padding: 5px;
+	text-align: center;
+  border: 1px solid gray;
+}
+
+table th {
+	padding: 5px;
+  background-color: #CF8080;
+  border: 1px solid gray;
+}
+
+
+
+
+  
