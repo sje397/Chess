@@ -7,6 +7,14 @@
   #logout {text-align:right}
   #info {text-align:right}
   #content {position:relative;}
+  #games table {
+    width: 100%;
+    border: 1px solid black;
+  }
+  #games table td {
+    border: 1px solid black;
+    text-align: center;
+  }
   </style>
 {% endblock %}
 {% block body %}
@@ -14,18 +22,37 @@
 	<div id='title'><span><strong>Chess</strong></span></div>
 	<div id='msg'>Welcome, {{ user.nickname }}.</div>
 	<div id='info'></div>
+{% if games %}
+	<div id='games'>
+     <table id='gamesTable'>
+      <tr><th>White</th><th>Black</th><th>Moves</th><th></th></tr>
+{% for g in games %}
+{% if g.myMove %}
+      <tr><td>{{ g.whitePlayer.email }}</td><td>{{ g.blackPlayer.email }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>Your move</a></td></tr>
+{% else %}
+      <tr><td>{{ g.whitePlayer.email }}</td><td>{{ g.blackPlayer.email }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>View</a></td></tr>
+{% endif %}
+{% endfor %}
+     </table>
+	</div>
+{% endif %}
 	<div id='newInvite'>
 	  <form method='POST'>
+	  <fieldset>
+	  <legend>Start a new game</legend>
 		<select name='invited'>
 {% for e in contacts %}
     <option value="{{ e.email.text}}">{{ e.title.text }} ({{ e.email.text }})</option>
 {% endfor %}
 		</select>
 		<input type='submit' value='Invite'></input>
+		</fieldset>
 		</form>
 	</div>
+{% if invitesFrom %}
 	<div id='invitesFrom'>
 	 <form method='POST'>
+	   <fieldset>
 	   <legend>Pending Invites (sent)</legend>
 	   <table id='pendingInvitesFromTable'>
 	    <tr><th>Contact</th><th>Select</th></tr>
@@ -33,11 +60,15 @@
       <tr><td>{{ i.toEmail }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
 {% endfor %}
 	   </table>
-    <input type='submit' name='submit' value='Delete'></input>
+      <input type='submit' name='submit' value='Delete'></input>
+	   </fieldset>
 	 </form>
 	</div>
+{% endif %}
+{% if invitesTo %}
   <div id='invitesTo'>
    <form method='POST'>
+     <fieldset>
      <legend>Pending Invites (received)</legend>
      <table id='pendingInvitesToTable'>
       <tr><th>Contact</th><th>Select</th></tr>
@@ -47,6 +78,8 @@
      </table>
     <input type='submit' name='submit' value='Accept'></input>
     <input type='submit' name='submit' value='Reject'></input>
+    </fieldset>
    </form>
   </div>
+{% endif %}
 {% endblock %}

@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 
 from google.appengine.api import memcache
 from google.appengine.ext import webapp
@@ -92,6 +93,9 @@ class MainView(BaseView):
     else:
       contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : {'text': 'dev@example.com'}}]
 
+    games = models.Game.gql('where finished = False and whitePlayer = :1', user._user_info_key).fetch(200) 
+    games.extend(models.Game.gql('where finished = False and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
+
     invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
     invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
 
@@ -99,12 +103,13 @@ class MainView(BaseView):
     for i in invitesToEtc:
       i.toUser = user
     db.put(invitesToEtc) #update toUser
-    invitesTo.append(invitesToEtc)
+    invitesTo.extend(invitesToEtc)
     
     template_values = {}
     template_values.update({'logoutUrl': users.create_logout_url("/")})
     template_values.update({'user': user})
     template_values.update({'contacts': contacts})
+    template_values.update({'games': games})
     template_values.update({'invitesFrom': invitesFrom})
     template_values.update({'invitesTo': invitesFrom})
 
@@ -130,7 +135,14 @@ class MainView(BaseView):
       for i in invites:
         invite = db.get(i)
         invite.status = models.INVITE_ACCEPTED
+        if invite.fromPlayAs == models.PLAYAS_RANDOM:
+          invite.fromPlayAs = random.choice([models.PLAYAS_WHITE, models.PLAYAS_BLACK])
         invite.put()
+        if invite.fromPlayAs == models.PLAYAS_WHITE:
+          game = models.Game(whitePlayer = invite.fromUser, blackPlayer = invite.toUser)
+        else:
+          game = models.Game(whitePlayer = invite.toUser, blackPlayer = invite.fromUser)
+        game.put()
     if self.request.get('submit') == 'Reject':
       invites = self.request.get('select')
       if not isinstance(invites, list):
@@ -144,10 +156,49 @@ class MainView(BaseView):
 class GameView(BaseView):
   @authRequired
   def get(self, user):
-    template_values = {}
-    template_values.update({'logoutUrl': users.create_logout_url("/")})
-    template_values.update({'user': user})
-    self.render_template('chess.html', template_values)
+    gameKeyStr = self.request.get('id')
+    if gameKeyStr:
+      game = db.get(gameKeyStr)
+      if game:
+        template_values = {}
+        template_values.update({'logoutUrl': users.create_logout_url("/")})
+        template_values.update({'user': user})
+        template_values.update({'game': game})
+        # HACK - if playing yourself, it's your move
+        if game.whiteMove:
+          playAsWhite = game.whitePlayer.user_id() == user.user_id()
+        else:
+          playAsWhite = not game.blackPlayer.user_id() == user.user_id()
+        template_values.update({'playAsWhite': playAsWhite})
+        self.render_template('chess.html', template_values)
+      else:
+        self.error(404)
+    else:
+      self.error(500)
+      
+  @authRequired
+  def post(self, user):
+    gameKeyStr = self.request.get('id')
+    move = self.request.get('move')
+    moveNum = int(self.request.get('moveNum'))
+    finish = self.request.get('finish') == 'true'
+    if gameKeyStr and move:
+      game = db.get(gameKeyStr)
+      if game:
+        if len(game.moves) == moveNum:
+          game.moves.append(move)
+          game.whiteMove = not game.whiteMove
+          game.finished = finish
+          game.put()
+          self.redirect('/game?id=' + str(game.key()))
+        else:
+          logging.info('Out of sync move, move list length: %s, move number: %s' % (len(game.moves), moveNum))
+          self.error(409)
+      else:
+        self.error(404)
+    else:
+      self.error(500)
+    
 
 application = webapp.WSGIApplication(
                                      [ ('/', MainView),

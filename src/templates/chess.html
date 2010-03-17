@@ -23,7 +23,8 @@
     <div id='board'>
     </div>
     <div id='links' class='text'>
-    	<a href='#' id='undo'>Undo</a>&nbsp;
+      <a href='/' id='home'>Home</a>&nbsp;
+    	<!--<a href='#' id='undo'>Undo</a>&nbsp;-->
     	<a href='#' id='reset'>Reset</a>&nbsp;
     	<a href='#' id='flip'>Flip</a>&nbsp;
     	<img id='checkMark' src='images/red-check.jpg' height='100%' align='top' style='display:none'>
@@ -101,11 +102,17 @@
     </div>
     <script>
       $(function() {
-        var invert = false;
+        var playAsWhite = {{ playAsWhite|lower }};
+        var invert = !playAsWhite;
+        var inCheck = false, inCheckmate = false;
         var whitePieceType = 'paper', 
           blackPieceType = 'cloth',
           whiteSquareImage = 'light-wood.jpg',
           blackSquareImage = 'dark-wood.jpg';
+        var moves = [];
+{% for m in game.moves %}
+        moves.push("{{ m }}")          
+{% endfor %}
 
         $('#wpcType').val(whitePieceType);
         $('#bpcType').val(blackPieceType);
@@ -242,6 +249,7 @@
         }
 
         function acceptFunc(piece) {
+            if(piece.hasClass('wpc') != playAsWhite) return false;
             if(piece.hasClass('wpc') != whiteMove) return false;
             var sq = $(this), sourceSquare = piece.data('square');
             if(sq.data('x') == sourceSquare.data('x') && sq.data('y') == sourceSquare.data('y')) return false;
@@ -265,7 +273,8 @@
               return;
             }
             
-            var inCheck = true, inCheckmate = false;
+            inCheck = true;
+            inCheckmate = false;
             // check for checkmate
             // check if king can move
             var px = square.data('x'), py = square.data('y'),
@@ -407,6 +416,18 @@
               .css('left', '' + targetSquare[0].offsetLeft + 'px')
               .css('top', '' + targetSquare[0].offsetTop + 'px');
             checkCheck();
+
+            if(moveList.length == {{ game.moves|length }}) {
+	            var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "",
+	              location = "/game?id={{ game.key }}&move=" + moveStr + "&moveNum={{ game.moves|length }}&finish=" + inCheckmate;
+	
+	            $.ajax({ url: "/game", type: "POST", context: document.body, 
+	                data: {id: "{{ game.key }}", move: moveStr, moveNum: moveList.length, finish: inCheckmate},
+	                success: function(){
+	                    window.location = "/game?id={{ game.key }}";
+	                }
+	            });
+            }
           }
           moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece, promotion)); 
         }
@@ -558,13 +579,29 @@
             }
             placePieces();
         }
+
+        function fastForward() {
+            for(var i = 0; i < moves.length; i++) {
+                var from = moves[i].split('-')[0], to = moves[i].split('-')[1];
+                var sx = parseInt(from.split(',')[0]),
+                  sy =  parseInt(from.split(',')[1]),
+                  tx = parseInt(to.split(',')[0]),
+                  ty =  parseInt(to.split(',')[1]);
+                var piece = boardData[sy][sx].data('piece'),
+                  square = boardData[ty][tx];
+                doMove(piece, square, true)
+            }
+            placePieces();
+            checkCheck();
+        }
         
         $('#undo').click(undoMove);
         $('#reset').click(function() {
             while(moveList.length) undoMove();
         });
         $('#flip').click(flip);
-        
+
+        fastForward();
       });
     </script>
 {% endblock %}
