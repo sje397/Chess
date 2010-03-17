@@ -153,23 +153,25 @@ Please visit http://your-move.appspot.com to accept or reject this invite.
         invites = [invites]
       for i in invites:
         invite = db.get(i)
-        invite.status = models.INVITE_ACCEPTED
-        if invite.fromPlayAs == models.PLAYAS_RANDOM:
-          invite.fromPlayAs = random.choice([models.PLAYAS_WHITE, models.PLAYAS_BLACK])
-        invite.put()
-        if invite.fromPlayAs == models.PLAYAS_WHITE:
-          game = models.Game(whitePlayer = invite.fromUser, blackPlayer = invite.toUser)
-        else:
-          game = models.Game(whitePlayer = invite.toUser, blackPlayer = invite.fromUser)
-        game.put()
+        if invite:
+          invite.status = models.INVITE_ACCEPTED
+          if invite.fromPlayAs == models.PLAYAS_RANDOM:
+            invite.fromPlayAs = random.choice([models.PLAYAS_WHITE, models.PLAYAS_BLACK])
+          invite.put()
+          if invite.fromPlayAs == models.PLAYAS_WHITE:
+            game = models.Game(whitePlayer = invite.fromUser, blackPlayer = invite.toUser)
+          else:
+            game = models.Game(whitePlayer = invite.toUser, blackPlayer = invite.fromUser)
+          game.put()
     if self.request.get('submit') == 'Reject':
       invites = self.request.get('select')
       if not isinstance(invites, list):
         invites = [invites]
       for i in invites:
         invite = db.get(i)
-        invite.status = models.INVITE_REJECTED
-        invite.put()
+        if invite:
+          invite.status = models.INVITE_REJECTED
+          invite.put()
     self.redirect('/')
 
 class GameView(BaseView):
