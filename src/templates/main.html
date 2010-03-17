@@ -28,9 +28,9 @@
       <tr><th>White</th><th>Black</th><th>Moves</th><th></th></tr>
 {% for g in games %}
 {% if g.myMove %}
-      <tr><td>{{ g.whitePlayer.email }}</td><td>{{ g.blackPlayer.email }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>Your move</a></td></tr>
+      <tr><td>{{ g.whitePlayer.nickname }}</td><td>{{ g.blackPlayer.nickname }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>Your move</a></td></tr>
 {% else %}
-      <tr><td>{{ g.whitePlayer.email }}</td><td>{{ g.blackPlayer.email }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>View</a></td></tr>
+      <tr><td>{{ g.whitePlayer.nickname }}</td><td>{{ g.blackPlayer.nickname }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>View</a></td></tr>
 {% endif %}
 {% endfor %}
      </table>
@@ -40,12 +40,19 @@
 	  <form method='POST'>
 	  <fieldset>
 	  <legend>Start a new game</legend>
+{% if contacts %}
 		<select name='invited'>
 {% for e in contacts %}
     <option value="{{ e.email.text}}">{{ e.title.text }} ({{ e.email.text }})</option>
 {% endfor %}
 		</select>
+{% else %}
+    <label>Email:</label><input type='text' name='invited'></input>
+{% endif %}
 		<input type='submit' value='Invite'></input>
+{% if contacts %}
+    <a href='http://www.google.com/contacts'>Manage Contacts</a>
+{% endif %}    
 		</fieldset>
 		</form>
 	</div>

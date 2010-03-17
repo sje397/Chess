@@ -12,7 +12,7 @@ PLAYAS_BLACK = 3
 class Invite(db.Model):
   fromUser = users.UserProperty(required = True, auto_current_user_add = True)
   toUser = users.UserProperty()
-  toEmail = db.StringProperty(required = True)
+  toEmail = db.StringProperty()
   status = db.IntegerProperty(required = True, default = INVITE_PENDING)
   created = db.DateTimeProperty(auto_now_add = True)
   updated = db.DateTimeProperty(auto_now = True)

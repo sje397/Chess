@@ -8,6 +8,8 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 
+from google.appengine.api import mail
+
 import gdata.service
 import gdata.alt.appengine
 import gdata.auth
@@ -91,13 +93,14 @@ class MainView(BaseView):
           user.updateInfo(access_token = None)
           contacts = []
     else:
-      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : {'text': 'dev@example.com'}}]
+      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : {'text': 'dev@example.com'}},
+                  {'title' : {'text': 'buddy number 2'}, 'email' : {'text': 'nobody@example.com'}}]
 
-    games = models.Game.gql('where finished = False and whitePlayer = :1', user._user_info_key).fetch(200) 
+    games = models.Game.gql('where finished = FALSE and whitePlayer = :1', user._user_info_key).fetch(200) 
     games.extend(models.Game.gql('where finished = False and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
 
     invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
-    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+    invitesTo = models.Invite.gql('where toUser = :1 and toEmail = NULL and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
 
     invitesToEtc = models.Invite.gql('where toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
     for i in invitesToEtc:
@@ -111,15 +114,31 @@ class MainView(BaseView):
     template_values.update({'contacts': contacts})
     template_values.update({'games': games})
     template_values.update({'invitesFrom': invitesFrom})
-    template_values.update({'invitesTo': invitesFrom})
+    template_values.update({'invitesTo': invitesTo})
 
     self.render_template('main.html', template_values)
 
   @authRequired
   def post(self, user):
     logging.info('submit value: ' + self.request.get('submit'))
-    if self.request.get('invited'):
-      invite = models.Invite(toEmail = self.request.get('invited'))
+    toEmail = self.request.get('invited')
+    if toEmail:
+      info = users.UserInfo.gql('where email = :1', toEmail).get()
+      if info:
+        other = users.User(identity_url = info.key().name())
+        invite = models.Invite(toUser = other, toEmail = self.request.get('invited'))
+      else:
+        invite = models.Invite(toEmail = toEmail)
+        mail.send_mail(sender="Your-Move Online Chess <sje397@gmail.com>",
+              to=toEmail,
+              subject="Chess Invitation",
+              body="""
+Dear """ + toEmail + """,
+
+""" + user.nickname() + """ (""" + user.email() + """) has invited you to play a game of chess.
+
+Please visit http://your-move.appspot.com to accept or reject this invite.
+""")
       invite.put()
     if self.request.get('submit') == 'Delete':
       invites = self.request.get('select')
