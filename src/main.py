@@ -120,7 +120,6 @@ class MainView(BaseView):
 
   @authRequired
   def post(self, user):
-    logging.info('submit value: ' + self.request.get('submit'))
     toEmail = self.request.get('invited')
     if toEmail:
       info = users.UserInfo.gql('where email = :1', toEmail).get()

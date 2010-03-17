@@ -19,6 +19,7 @@
 {% endblock %}
 {% block body %}
 	{{ block.super }}
+	<div id='content'>
 	<div id='title'><span><strong>Chess</strong></span></div>
 	<div id='msg'>Welcome, {{ user.nickname }}.</div>
 	<div id='info'></div>
@@ -87,6 +88,7 @@
     <input type='submit' name='submit' value='Reject'></input>
     </fieldset>
    </form>
+  </div>
   </div>
 {% endif %}
 {% endblock %}

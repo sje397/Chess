@@ -25,7 +25,7 @@
     <div id='links' class='text'>
       <a href='/' id='home'>Home</a>&nbsp;
     	<!--<a href='#' id='undo'>Undo</a>&nbsp;-->
-    	<a href='#' id='reset'>Reset</a>&nbsp;
+    	<!-- <a href='#' id='reset'>Reset</a>&nbsp;-->
     	<a href='#' id='flip'>Flip</a>&nbsp;
     	<img id='checkMark' src='images/red-check.jpg' height='100%' align='top' style='display:none'>
     	<img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
@@ -417,14 +417,18 @@
               .css('top', '' + targetSquare[0].offsetTop + 'px');
             checkCheck();
 
-            if(moveList.length == {{ game.moves|length }}) {
+            if(visible && moveList.length == {{ game.moves|length }}) {
 	            var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "",
 	              location = "/game?id={{ game.key }}&move=" + moveStr + "&moveNum={{ game.moves|length }}&finish=" + inCheckmate;
 	
 	            $.ajax({ url: "/game", type: "POST", context: document.body, 
 	                data: {id: "{{ game.key }}", move: moveStr, moveNum: moveList.length, finish: inCheckmate},
-	                success: function(){
+	                success: function() {
 	                    window.location = "/game?id={{ game.key }}";
+	                },
+	                error: function(xhr, textStatus) {
+		                alert('There was an error: ' + textStatus);
+		                undoMove();
 	                }
 	            });
             }
