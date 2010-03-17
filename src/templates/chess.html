@@ -26,6 +26,7 @@
 	     <!-- <a href='#' id='undo'>Undo</a>&nbsp;-->
 	     <!-- <a href='#' id='reset'>Reset</a>&nbsp;-->
 	     <a href='#' id='flip'>Flip</a>&nbsp;
+       <a href='#' id='resign'>Resign</a>&nbsp;
 	     <img id='checkMark' src='images/red-check.png' height='100%' align='top' style='display:none'>
 	     <img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
 	   </div>
@@ -513,6 +514,10 @@
             placePieces();
         }
 
+        function resign() {
+            
+        }
+        
         function fastForward() {
             for(var i = 0; i < moves.length; i++) {
                 var parts = moves[i].split('-'); 
@@ -536,6 +541,7 @@
             while(moveList.length) undoMove();
         });
         $('#flip').click(flip);
+        $('#resign').click(resign);
 
         fastForward();
       });
