@@ -267,8 +267,13 @@
                     }
                 }
             }
-            if(inCheckmate) $('#checkmateMark').show();
-            else $('#checkMark').show();
+            if(inCheckmate) {
+                $('#checkmateMark').show();
+                $('#checkMark').hide();
+            } else {
+                $('#checkmateMark').hide();
+                $('#checkMark').show();
+            }
         }
 
         function update() {
