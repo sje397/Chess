@@ -66,6 +66,7 @@
             this.visible = visible;
             this.passantPiece = passantPiece;
             this.promotion = promotion;
+            this.counterReset = (takenPiece || piece.hasClass('pawn'));
         }
 
         // we've already eliminated:
@@ -189,17 +190,24 @@
 
         function canMove(isWhite) {
             var ret = false;
-            var pieces = $(".piece." + (isWhite ? "wpc" : "bpc"));
-            pieces.each(function() {
-                var piece = $(this);
-                for(var x = 0; x < 8 && !ret; x++) {
-                    for(var y = 0; y < 8 && !ret; y++) {
-                        if(legalMove(piece, boardData[y][x]) && !createsCheck(piece, boardData[y][x])) {
-                            ret = piece;
-                        }
-                    }
-                }
-            });
+            var count = 0;
+            for(var i = moveList.length - 1; i >= 0; i--) {
+                if(moveList[i].counterReset) break;
+                count++;
+            }
+            if(count < 100) {
+	            var pieces = $(".piece." + (isWhite ? "wpc" : "bpc"));
+	            pieces.each(function() {
+	                var piece = $(this);
+	                for(var x = 0; x < 8 && !ret; x++) {
+	                    for(var y = 0; y < 8 && !ret; y++) {
+	                        if(legalMove(piece, boardData[y][x]) && !createsCheck(piece, boardData[y][x])) {
+	                            ret = piece;
+	                        }
+	                    }
+	                }
+	            });
+            }
             if(ret) $('#stalemateMark').hide();
             else $('#statemateMark').show();
             return ret;
