@@ -599,6 +599,7 @@
             for(var i = moveList.length; i < moves.length; i++) {
                 if(moves[i] == 'resign'){
                     $('#resignedMark').show();
+                    whiteMove = !playAsWhite;
                 } else {
 	                var parts = moves[i].split('-'); 
 	                var from = parts[0], to = parts[1];
@@ -613,11 +614,8 @@
 	                doMove(piece, square, true, promoteTo);
                 }
             }
-            placePieces();
-            checkCheck();
-{% if game.finished %}
-            whiteMove = !playAsWhite;
-{% endif %}
+            if(whiteMove == playAsWhite)
+                canMove(whiteMove); // set stalemate indicator
         }
         
         $('#undo').click(undoMove);
