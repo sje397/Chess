@@ -234,7 +234,7 @@
             // check if king can move
             var px = square.data('x'), py = square.data('y'),
               xmin = Math.max(px - 1, 0), xmax = Math.min(px + 1, 7),
-              ymin = Math.max(py - 1, 0), xmax = Math.min(py + 1, 7),
+              ymin = Math.max(py - 1, 0), ymax = Math.min(py + 1, 7),
               trapped = true;
             for(var x = xmin; x <= xmax && trapped; x++) {
                 for(var y = ymin; y <= ymax && trapped; y++) {
