@@ -40,6 +40,8 @@
 	   </div>
     <script>
       $(function() {
+        var pollPeriod = 5000;
+        
         var playAsWhite = {{ playAsWhite|lower }};
         var invert = !playAsWhite;
         var inCheck = false, inCheckmate = false, resigned = false;
@@ -209,7 +211,7 @@
 	            });
             }
             if(ret) $('#stalemateMark').hide();
-            else $('#statemateMark').show();
+            else $('#stalemateMark').show();
             return ret;
         }
 
@@ -276,6 +278,7 @@
             if(inCheckmate) {
                 $('#checkmateMark').show();
                 $('#checkMark').hide();
+                $('#yourMoveMark').hide();
             } else {
                 $('#checkmateMark').hide();
                 $('#checkMark').show();
@@ -292,11 +295,11 @@
 	                    moves = data;
 	                    fastForward();
                     } else {
-	                    setTimeout(update, 30000);
+	                    setTimeout(update, pollPeriod);
                     }
                 },
                 error: function(xhr, textStatus) {
-                    setTimeout(update, 30000);
+                    setTimeout(update, pollPeriod);
                 }
             });
         }
@@ -309,7 +312,7 @@
                     //window.location = "/game?id={{ game.key }}";
                     //flip();
                     moves.push(moveStr);
-                    if(!finished) setTimeout(update, 30000);
+                    if(!finished) setTimeout(update, pollPeriod);
                     if(callback) callback();
                 },
                 error: function(xhr, textStatus) {
@@ -620,8 +623,10 @@
 	                doMove(piece, square, true, promoteTo);
                 }
             }
-            if(whiteMove == playAsWhite)
-                canMove(whiteMove); // set stalemate indicator
+            if(whiteMove == playAsWhite && !inCheckmate && !canMove(playAsWhite)) { // set stalemate indicator
+                whiteMove = !playAsWhite;
+                $('#yourMoveMark').hide();
+            }
         }
         
         $('#undo').click(undoMove);
