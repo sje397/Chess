@@ -19,7 +19,7 @@
 	{{ block.super }}
   	<div id='promoteDialog' style='display: none'></div>
     <div id='top' class='text'>Welcome, {{user.nickname}}.</div>
-{% if playAsWhite == 'true' %}
+{% if playAsWhite %}
     <div id='gameInfo' class='text'>vs {{ game.blackPlayer.nickname }} ({{ game.blackPlayer.email }}) - you are White</div>
 {% else %}
     <div id='gameInfo' class='text'>vs {{ game.whitePlayer.nickname }} ({{ game.whitePlayer.email }}) - you are Black</div>
@@ -190,12 +190,10 @@
         function canMove(isWhite) {
             var ret = false;
             var pieces = $(".piece." + (isWhite ? "wpc" : "bpc"));
-            peices.each(function() {
+            pieces.each(function() {
+                var piece = $(this);
                 for(var x = 0; x < 8 && !ret; x++) {
                     for(var y = 0; y < 8 && !ret; y++) {
-                        // small optimisation - can't move onto our own pieces
-                        if(boardData[y][x].data('piece') && boardData[y][x].data('piece').hasClass('wpc') == isWhite)
-                            continue; 
                         if(legalMove(piece, boardData[y][x]) && !createsCheck(piece, boardData[y][x])) {
                             ret = piece;
                         }
