@@ -42,3 +42,7 @@ class Prefs(db.Expando):
   blackPieceType = db.StringProperty(default='cloth')
   whiteSquareImage = db.StringProperty(default='white-marble.jpg')
   blackSquareImage = db.StringProperty(default='grey-marble.jpg')
+  emailMyMove = db.BooleanProperty(required = True, default = True)
+  imMyMove = db.BooleanProperty(required = True, default = True)
+  emailInvited = db.BooleanProperty(required = True, default = True)
+  imInvited = db.BooleanProperty(required = True, default = False)

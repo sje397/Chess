@@ -8,8 +8,6 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 
-from google.appengine.api import mail
-
 import gdata.service
 import gdata.alt.appengine
 import gdata.auth
@@ -21,6 +19,8 @@ import gdata.contacts.service
 from django.utils import simplejson 
 
 import models
+import notify
+from utils import getPrefs
 
 dev_env = os.environ['SERVER_SOFTWARE'].startswith('Dev')
 
@@ -60,7 +60,7 @@ def authRequired(fn):
     kwargs.update({'user': user})
     return fn(*args, **kwargs)
   return authFunc
-
+ 
 class BaseView(webapp.RequestHandler):
   def initialize(self, request, response):
     super(BaseView, self).initialize(request, response)
@@ -130,19 +130,11 @@ class MainView(BaseView):
       info = users.UserInfo.gql('where email = :1', toEmail).get()
       if info:
         other = users.User(identity_url = info.key().name())
-        invite = models.Invite(toUser = other, toEmail = self.request.get('invited'))
+        invite = models.Invite(toUser = other, toEmail = toEmail)
+        notify.sendInvite(user, other)
       else:
         invite = models.Invite(toEmail = toEmail)
-        mail.send_mail(sender="Your-Move Online Chess <sje397@gmail.com>",
-              to=toEmail,
-              subject="Chess Invitation",
-              body="""
-Dear """ + toEmail + """,
-
-""" + user.nickname() + """ (""" + user.email() + """) has invited you to play a game of chess.
-
-Please visit http://your-move.appspot.com to accept or reject this invite.
-""")
+        notify.sendInviteEmail(user, toEmail)
       invite.put()
     if self.request.get('submit') == 'Delete':
       invites = self.request.get_all('select')
@@ -163,6 +155,7 @@ Please visit http://your-move.appspot.com to accept or reject this invite.
           else:
             game = models.Game(whitePlayer = invite.toUser, blackPlayer = invite.fromUser)
           game.put()
+          notify.sendYourMove(whitePlayer, blackPlayer, str(game.key()))
     if self.request.get('submit') == 'Reject':
       invites = self.request.get_all('select')
       for i in invites:
@@ -180,10 +173,8 @@ class GameView(BaseView):
       game = db.get(gameKeyStr)
       if game:
         template_values = {}
-        
-        prefs = models.Prefs.gql('where user = :1', user._user_info_key).get()
-        if not prefs:
-          prefs = models.Prefs(user = user)
+
+        prefs = getPrefs(user)
         template_values.update({'prefs': prefs})
         if dev_env:
           template_values.update({'pollPeriod': 5000})
@@ -264,9 +255,16 @@ class GameData(BaseView):
           game.whiteMove = not game.whiteMove
           game.state = state
           game.put()
-          #self.redirect('/game?id=' + str(game.key()))
+          
+          if game.whiteMove:
+            movePlayer = game.whitePlayer
+            otherPlayer = game.blackPlayer
+          else:
+            movePlayer = game.blackPlayer
+            otherPlayer = game.whitePlayer
+          notify.sendYourMove(movePlayer, otherPlayer, str(game.key()))
         else:
-          logging.warn('Out of sync move, move list length: %s, move number: %s, finished: %s' % (len(game.moves), moveNum, game.finished))
+          logging.warn('Out of sync move, move list length: %s, move number: %s, state: %s' % (len(game.moves), moveNum, game.state))
           self.error(409)
       else:
         self.error(404)
@@ -298,6 +296,12 @@ class PrefsView(BaseView):
     prefs.blackPieceType = self.request.get('bpcType')
     prefs.whiteSquareImage = self.request.get('wsqType')
     prefs.blackSquareImage = self.request.get('bsqType')
+    
+    logging.info('emailMyMove: ' + self.request.get('emailMyMove'))
+    prefs.emailMyMove = self.request.get('emailMyMove') == 'on'
+    prefs.emailInvited = self.request.get('emailInvited') == 'on'
+    prefs.imMyMove = self.request.get('imMyMove') == 'on'
+    prefs.imInvited = self.request.get('imInvited') == 'on'
     prefs.put()
     
     self.redirect('/')

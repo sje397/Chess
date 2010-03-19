@@ -16,6 +16,8 @@
   </div>
     <div id='config' class='section text ui-corner-all'>
       <form id='configForm' method='POST' action='/prefs'>
+      	<fieldset>
+      		<legend>Board appearance</legend>
           <table>
             <tr>
               <td><label for='wpcType'>White pieces:</label></td>
@@ -83,7 +85,20 @@
               </select></td>
             </tr>
           </table>
-          <input type='submit' name='submit' value='Save'></input>
+         </fieldset>
+         <fieldset>
+           <legend>Notifications</legend>
+           <table>
+             <tr><td><label for='emailInvited'>Email invites</label></td><td><input type='checkbox' id='emailInvited' name='emailInvited' {{ prefs.emailInvites|yesno:"checked='true' ," }}/></td></tr>
+             <tr><td><label for='emailMyMove'>Email 'your move'</label></td><td><input type='checkbox' id='emailMyMove' name='emailMyMove' {{ prefs.emailMyMove|yesno:"checked='true' ," }}/></td></tr>
+             <tr><td><label for='imInvited'>IM invites</label></td><td><input type='checkbox' id='imInvited' name='imInvited' {{ prefs.imInvited|yesno:"checked='true' ," }}/></td></tr>
+             <tr><td><label for='imMyMove'>IM 'your move'</label></td><td><input type='checkbox' id='imMyMove' name='imMyMove' {{ prefs.imMyMove|yesno:"checked='true' ," }}/></td></tr>
+         		</table>
+         	</fieldset>
+         <input type='submit' name='submit' value='Save'></input>
+         <div><span class='info'>Please note: in order to receive IM notifcactions, you must have a GTalk or Jabber account<br />
+         		for your current email address ({{ user.email }}), and you must add a contact with<br />
+         		the following address to that account: your-move@appspot.com</span></div>
       </form>
     </div>
     <div id='demo'>
@@ -96,13 +111,24 @@
     var whitePieceType = '{{ prefs.whitePieceType }}', 
       blackPieceType = '{{ prefs.blackPieceType }}',
       whiteSquareImage = '{{ prefs.whiteSquareImage }}',
-      blackSquareImage = '{{ prefs.blackSquareImage }}';
+      blackSquareImage = '{{ prefs.blackSquareImage }}',
+
+      emailInvited = {{ prefs.emailInvited|lower }},
+      imInvited = {{ prefs.imInvited|lower }},
+      emailMyMove = {{ prefs.emailMyMove|lower }},
+      imMyMove = {{ prefs.imMyMove|lower }};
+      
     var sh = 540 / 8;
     
     $('#wpcType').val(whitePieceType);
     $('#bpcType').val(blackPieceType);
     $('#wsqType').val(whiteSquareImage);
     $('#bsqType').val(blackSquareImage);
+
+    $('#emailInvited').attr('checked', emailInvited);
+    $('#emailMyMove').attr('checked', emailMyMove);
+    $('#imInvited').attr('checked', imInvited);
+    $('#imMyMove').attr('checked', imMyMove);
 
     function setImages() {
         $('.wsq').html('<img src="images/' + whiteSquareImage + '" width="100%" height="100%" alt="white square"/>');
