@@ -262,7 +262,8 @@ class GameData(BaseView):
           else:
             movePlayer = game.blackPlayer
             otherPlayer = game.whitePlayer
-          notify.sendYourMove(movePlayer, otherPlayer, str(game.key()))
+          if game.state == models.NOT_FINISHED:
+            notify.sendYourMove(movePlayer, otherPlayer, str(game.key()))
         else:
           logging.warn('Out of sync move, move list length: %s, move number: %s, state: %s' % (len(game.moves), moveNum, game.state))
           self.error(409)
