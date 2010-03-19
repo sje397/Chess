@@ -155,7 +155,7 @@ class MainView(BaseView):
           else:
             game = models.Game(whitePlayer = invite.toUser, blackPlayer = invite.fromUser)
           game.put()
-          notify.sendYourMove(whitePlayer, blackPlayer, str(game.key()))
+          notify.sendYourMove(game.whitePlayer, game.blackPlayer, str(game.key()))
     if self.request.get('submit') == 'Reject':
       invites = self.request.get_all('select')
       for i in invites:
