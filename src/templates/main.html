@@ -23,23 +23,18 @@
 	  <span>Welcome, {{ user.nickname }}.</span>
 	  <p><a href='/prefs'><small>prefs</small></a></p>
 	</div>
-{% if games %}
-	<div id='games' class='section ui-corner-all'>
+	<div id='games' class='section ui-corner-all' style='display: none'>
 	   <span class='sectionTitle'>Games</span>
 	   <center>
      <table id='gamesTable'>
+     	<thead>
       <tr><th>White</th><th>Black</th><th>Moves</th><th></th></tr>
-{% for g in games %}
-{% if g.myMove %}
-      <tr><td>{{ g.whitePlayer.nickname }}</td><td>{{ g.blackPlayer.nickname }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>Your move</a></td></tr>
-{% else %}
-      <tr><td>{{ g.whitePlayer.nickname }}</td><td>{{ g.blackPlayer.nickname }}</td><td>{{ g.moves|length }}</td><td><a href='game?id={{ g.key }}'>View</a></td></tr>
-{% endif %}
-{% endfor %}
+      </thead>
+      <tbody>
+			</tbody>
      </table>
      </center>
 	</div>
-{% endif %}
   </div>
   <div class='sectionGroup'>
 	<div id='newInvite' class='section ui-corner-all'>
@@ -64,38 +59,103 @@
 	</div>
 	</div>
 	<div class='sectionGroup'>
-{% if invitesFrom %}
-	<div id='invitesFrom' class='section ui-corner-all'>
+	<div id='invitesFrom' class='section ui-corner-all' style='display: none'>
     <span class='sectionTitle'>Pending Invites (sent)</span>
 	  <form method='POST'>
 	   <table>
+	   	<thead>
 	    <tr><th>Contact</th><th>Email</th><th>Select</th></tr>
-{% for i in invitesFrom %}
-{% if i.toUser %}
-      <tr><td>{{ i.toUser.nickname }}</td><td>{{ i.toUser.email }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
-{% else %}
-      <tr><td>Unknown</td><td>{{ i.toEmail }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
-{% endif %}
-{% endfor %}
+	    </thead>
+	    <tbody>
+			</tbody>
 	   </table>
       <input type='submit' name='submit' value='Delete'></input>
 	 </form>
 	</div>
-{% endif %}
-{% if invitesTo %}
-  <div id='invitesTo' class='section ui-corner-all'>
+  <div id='invitesTo' class='section ui-corner-all' style='display: none'>
    <span class='sectionTitle'>Pending Invites (received)</span>
    <form method='POST'>
      <table id='pendingInvitesToTable'>
+       <thead>
       <tr><th>Contact</th><th>Email</th><th>Select</th></tr>
-{% for i in invitesTo %}
-      <tr><td>{{ i.fromUser.nickname }}</td><td>{{ i.fromUser.email }}</td><td><input type='checkbox' name='select' value='{{ i.key }}'></input></td></tr>
-{% endfor %}
+			</thead>
+			<tbody>
+			</tbody>
      </table>
     <input type='submit' name='submit' value='Accept'></input>
     <input type='submit' name='submit' value='Reject'></input>
    </form>
   </div>
-{% endif %}
   </div>
+<script>
+    var games = [];
+{% for g in games %}
+    games.push({key: "{{ g.key }}", whiteNick: "{{ g.whitePlayer.nickname }}", blackNick: "{{ g.blackPlayer.nickname }}", moves: {{ g.moves|length }}, myMove: "{{g.myMove}}" == "True"});
+{% endfor %}
+    var invitesFrom = [];
+
+{% for i in invitesFrom %}
+{% if i.toUser %}
+    invitesFrom.push({key: "{{ i.key }}", nick: "{{ i.toUser.nickname }}", email: "{{ i.toUser.email }}"});
+{% else %}
+    invitesFrom.push({key: "{{ i.key }}", nick: "Unknown", email: "{{ i.toUser.email }}"});
+{% endif %}
+{% endfor %}
+    var invitesTo = [];
+{% for i in invitesTo %}
+    invitesTo.push({key: "{{ i.key }}", nick: "{{ i.fromUser.nickname }}", email: "{{ i.fromUser.email }}"});
+{% endfor %}
+
+  function setGames(games) {
+	  var selector = '#games';
+	  var table = $(selector + ' table');
+	  $('tbody', table).empty();
+	  if(games.length) {
+		  var row;
+		  for(var i = 0; i < games.length; i++) {
+			  row = $('<tr><td>' + games[i].whiteNick + '</td><td>' + games[i].blackNick + '</td><td>' 
+					  + games[i].moves + '</td><td><a href="game?id=' + games[i].key + '">' + (games[i].myMove ? 'Your move' : 'View') + '</a></td></tr>');
+			  table.append(row);
+		  }
+		  $(selector).show();
+	  } else
+		  $(selector).hide();
+}
+  function setInvites(selector, invites) {
+	  var table = $(selector + ' table');
+	  $('tbody', table).empty();
+	  if(invites.length) {
+		  var row;
+		  for(var i = 0; i < invites.length; i++) {
+			  row = $('<tr><td>' + invites[i].nick + '</td><td>' + invites[i].email + '</td><td><input type="checkbox" name="select" value="' 
+					  + invites[i].key + '"></input></td></tr>');
+			  table.append(row);
+	  	}
+		  $(selector).show();
+	  } else
+		  $(selector).hide(); 
+  }
+
+  setGames(games);
+  setInvites('#invitesFrom', invitesFrom);
+  setInvites('#invitesTo', invitesTo);
+
+  var pollPeriod = 30000;
+  
+  function update() {
+      $.ajax({ url: "/summaryData", context: document.body, dataType: 'json',
+          success: function(data) {
+          	setGames(data.games);
+            setInvites('#invitesFrom', data.invitesFrom);
+            setInvites('#invitesTo', data.invitesTo);
+            setTimeout(update, pollPeriod);
+          },
+          error: function(xhr, textStatus) {
+            setTimeout(update, pollPeriod);
+          }
+      });
+  }
+
+  setTimeout(update, pollPeriod);
+</script>
 {% endblock %}

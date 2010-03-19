@@ -105,9 +105,9 @@ class MainView(BaseView):
     games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
 
     invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
-    invitesTo = models.Invite.gql('where toUser = :1 and toEmail = NULL and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
 
-    invitesToEtc = models.Invite.gql('where toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
+    invitesToEtc = models.Invite.gql('where toUser = NULL and toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
     for i in invitesToEtc:
       i.toUser = user
     db.put(invitesToEtc) #update toUser
@@ -204,6 +204,37 @@ class GameView(BaseView):
     else:
       self.error(500)
       
+class SummaryData(BaseView):
+  @authRequired
+  def get(self, user):
+    games = models.Game.gql('where state = 0 and whitePlayer = :1', user._user_info_key).fetch(200) 
+    games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
+
+    invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+
+    invitesToEtc = models.Invite.gql('where toUser = NULL and toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
+    for i in invitesToEtc:
+      i.toUser = user
+    db.put(invitesToEtc) #update toUser
+    invitesTo.extend(invitesToEtc)
+    
+    data = {}
+    data['games'] = []
+    for g in games:
+      data['games'].append({'key': str(g.key()), 'moves': len(g.moves), 'myMove' : g.myMove(), 'whiteNick': g.whitePlayer.nickname(), 'blackNick': g.blackPlayer.nickname()})
+    data['invitesFrom'] = []
+    for i in invitesFrom:
+      data['invitesFrom'].append({'key': str(i.key()), 'nick': i.fromUser.nickname(), 'email': i.fromUser.email()})
+    data['invitesTo'] = []
+    for i in invitesTo:
+      if i.toUser is None:
+        nick = "Unknown"
+      else:
+        nick = i.toUser.nickname()
+      data['invitesTo'].append({'key': str(i.key()), 'nick': nick, 'email': i.toEmail})
+    self.response.out.write(simplejson.dumps(data))
+
 class GameData(BaseView):
   @authRequired
   def get(self, user):
@@ -275,6 +306,7 @@ application = webapp.WSGIApplication(
                                      [ ('/', MainView),
                                        ('/game', GameView),
                                        ('/gameData', GameData),
+                                       ('/summaryData', SummaryData),
                                        ('/prefs', PrefsView),
                                       ],
                                      debug=True)
