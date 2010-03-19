@@ -32,19 +32,27 @@
 	     <!-- <a href='#' id='reset'>Reset</a>&nbsp;-->
 	     <a href='#' id='flip'>Flip</a>&nbsp;
        <a href='#' id='resign'>Resign</a>&nbsp;
-	     <img id='checkMark' src='images/red-check.png' height='100%' align='top' style='display:none'>
-	     <img id='checkmateMark' src='images/skull.png' height='100%' align='top' style='display:none'>
-	     <img id='resignedMark' src='images/white-flag.png' height='100%' align='top' style='display:none'>
-	     <span id='yourMoveMark' class='info' style='display:none'>Your Move</span>
-       <span id='stalemateMark' class='info' style='display:none'>Stalemate</span>
+	     <img id='checkMark' class='indicator' src='images/red-check.png' height='100%' align='top' style='display:none'>
+	     <img id='checkmateMark' class='indicator' src='images/skull.png' height='100%' align='top' style='display:none'>
+	     <img id='resignedMark' class='indicator' src='images/white-flag.png' height='100%' align='top' style='display:none'>
+	     <span id='yourMoveMark' class='indicator info' style='display:none'>Your Move</span>
+       <span id='stalemateMark' class='indicator info' style='display:none'>Stalemate</span>
 	   </div>
     <script>
       $(function() {
-        var pollPeriod = 30000;
+        var pollPeriod = {{ pollPeriod }};
+        var gameState = {
+          NOT_FINISHED: 0,
+          STALEMATE: 1,
+          WHITE_RESIGNED: 2,
+          BLACK_RESIGNED: 3,
+          WHITE_CHECKMATED: 4,
+          BLACK_CHECKMATED: 5
+        };
         
         var playAsWhite = {{ playAsWhite|lower }};
         var invert = !playAsWhite;
-        var inCheck = false, inCheckmate = false, resigned = false;
+        var inCheck = false, state = gameState.NOT_FINISHED;
         var whitePieceType = '{{ prefs.whitePieceType }}', 
           blackPieceType = '{{ prefs.blackPieceType }}',
           whiteSquareImage = '{{ prefs.whiteSquareImage }}',
@@ -71,6 +79,24 @@
             this.counterReset = (takenPiece || piece.hasClass('pawn'));
         }
 
+        function updateIndicators() {
+            $('.indicator').hide();
+            if(state == gameState.BLACK_RESIGNED || state == gameState.WHITE_RESIGNED) 
+                $('#resignedMark').show();
+            else {
+	            checkCheck();
+	            if(state == gameState.BLACK_CHECKMATED || state == gameState.WHITE_CHECKMATED) 
+	                $('#checkmateMark').show();
+	            else if(inCheck) {
+	                $('#checkMark').show();
+	                if(whiteMove == playAsWhite) $('#yourMoveMark').show();
+	            } else {
+	                checkStalemate();
+	                if(state == gameState.STALEMATE) $('#stalemateMark').show();
+	            		else if(whiteMove == playAsWhite) $('#yourMoveMark').show();
+	            }
+            }
+        }
         // we've already eliminated:
         //  - white move on black's turn and vice versa
         //  - move from and to same square
@@ -176,6 +202,7 @@
         }
 
         function acceptFunc(piece) {
+            if(state != gameState.NOT_FINISHED) return false;
             if(piece.hasClass('wpc') != playAsWhite) return false;
             if(piece.hasClass('wpc') != whiteMove) return false;
             var sq = $(this), sourceSquare = piece.data('square');
@@ -190,46 +217,41 @@
           doMove(piece, targetSquare, true);
         }
 
-        function canMove(isWhite) {
-            var ret = false;
+        function checkStalemate() {
+            var stalemate = true;
             var count = 0;
             for(var i = moveList.length - 1; i >= 0; i--) {
                 if(moveList[i].counterReset) break;
                 count++;
             }
             if(count < 100) {
-	            var pieces = $(".piece." + (isWhite ? "wpc" : "bpc"));
+	            var pieces = $(".piece." + (whiteMove ? "wpc" : "bpc"));
 	            pieces.each(function() {
 	                var piece = $(this);
-	                for(var x = 0; x < 8 && !ret; x++) {
-	                    for(var y = 0; y < 8 && !ret; y++) {
+	                for(var x = 0; x < 8 && stalemate; x++) {
+	                    for(var y = 0; y < 8 && stalemate; y++) {
 	                        if(legalMove(piece, boardData[y][x]) && !createsCheck(piece, boardData[y][x])) {
-	                            ret = piece;
+	                            stalemate = false;
 	                        }
 	                    }
 	                }
 	            });
             }
-            if(ret) $('#stalemateMark').hide();
-            else $('#stalemateMark').show();
-            return ret;
+            if(stalemate) state = gameState.STALEMATE;
         }
 
         function checkCheck() {
-            if(whiteMove == playAsWhite) $('#yourMoveMark').show();
-            else $('#yourMoveMark').hide();
-
             var king = $('.' + (whiteMove ? 'wpc' : 'bpc') + '.king');
             var square = king.data('square');
             checkers = inDanger(square, whiteMove);
             if(!checkers) {
-              $('#checkMark').hide();
-              $('#checkmateMark').hide();
+              inCheck = false;
+              state = gameState.NOT_FINISHED;
               return;
             }
             
             inCheck = true;
-            inCheckmate = false;
+            var inCheckmate = false;
             // check for checkmate
             // check if king can move
             var px = square.data('x'), py = square.data('y'),
@@ -276,13 +298,10 @@
                 }
             }
             if(inCheckmate) {
-                $('#checkmateMark').show();
-                $('#checkMark').hide();
-                $('#yourMoveMark').hide();
-            } else {
-                $('#checkmateMark').hide();
-                $('#checkMark').show();
-            }
+                if(whiteMove) state = gameState.BLACK_CHECKMATED;
+                else state = gameState.WHITE_CHECKMATED;
+            } else
+                state = gameState.NOT_FINISHED;
         }
 
         function update() {
@@ -304,26 +323,21 @@
             });
         }
         
-        function sendMoveString(moveStr, callback) {
-            var finished = inCheckmate || moveStr == 'resign' || !canMove(whiteMove);
+        function sendMoveString(moveStr, callback, errorCallback) {
+            updateIndicators();
             $.ajax({ url: "/gameData", type: "POST", context: document.body, 
-                data: {id: "{{ game.key }}", move: moveStr, moveNum: moves.length + 1, finish: finished},
+                data: {id: "{{ game.key }}", move: moveStr, moveNum: moves.length + 1, state: state},
                 success: function() {
                     //window.location = "/game?id={{ game.key }}";
                     //flip();
                     moves.push(moveStr);
-                    if(!finished) setTimeout(update, pollPeriod);
+                    if(state == gameState.NOT_FINISHED) setTimeout(update, pollPeriod);
                     if(callback) callback();
                 },
                 error: function(xhr, textStatus) {
                   alert('There was an error submitting your move. Please try again.');
-                  if(moves[moves.length -1] == 'resign') {
-                      moves.pop();
-                      whiteMove = !whiteMove;
-                      $('#resignedMark').hide();
-                      $('#yourMoveMark').show();
-                  } else
-                      undoMove();
+                  if(errorCallback) errorCallback();
+                  updateIndicators();
                 }
             });
         }
@@ -331,7 +345,10 @@
         function submitMove(sourceSquare, targetSquare, promoteTo) {
           var moveStr = "" + sourceSquare.data('x') + "," + sourceSquare.data('y') + "-" + targetSquare.data('x') + "," + targetSquare.data('y') + "";
           if(promoteTo) moveStr += "-" + promoteTo;
-          sendMoveString(moveStr);
+          sendMoveString(moveStr, function() {
+          }, function () {
+              undoMove();
+          });
         }
         
         function doMove(piece, targetSquare, visible, promoteTo) {
@@ -378,6 +395,11 @@
                   .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
           }
 
+          var firstMove = !piece.hasClass('hasMoved');
+          if(firstMove) piece.addClass('hasMoved');
+
+          whiteMove = !whiteMove;
+
           // pawns are special - en passant and promotion
           var promotion = false;
           if(piece.hasClass('pawn')) {
@@ -414,11 +436,10 @@
 	                  close: function() {
 	                    piece.removeClass('pawn').addClass($(this).dialog('option', 'promoteClass'))
 	                      .html('<img src="images/' + (isWhite ? whitePieceType : blackPieceType) + '-' + $(this).dialog('option', 'promoteClass') + '.png" width="100%" height="100%"/>');
-	                    checkCheck();
 
-	                    if(visible && moveList.length == {{ game.moves|length }} + 1) {
-	                      submitMove(sourceSquare, targetSquare,$(this).dialog('option', 'promoteClass'));
-	                    }
+	                    if(visible && moveList.length == {{ game.moves|length }} + 1)
+	                      submitMove(sourceSquare, targetSquare, $(this).dialog('option', 'promoteClass'));
+	                      
 	                    $(this).dialog('destroy');
 	                  }
 	              });
@@ -426,22 +447,15 @@
             }
           }
 
-          var firstMove = !piece.hasClass('hasMoved');
-          if(firstMove) piece.addClass('hasMoved');
-
-          whiteMove = !whiteMove;
-
           moveList.push(new Move(piece, sourceSquare, firstMove, visible, targetPiece, passantPiece, promotion)); 
 
           if(visible) {
             piece
               .css('left', '' + targetSquare[0].offsetLeft + 'px')
               .css('top', '' + targetSquare[0].offsetTop + 'px');
-            checkCheck();
 
-            if(visible && moveList.length == moves.length + 1 && !$('#promoteDialog').dialog('isOpen')) {
+            if(visible && moveList.length == moves.length + 1 && !$('#promoteDialog').dialog('isOpen'))
                 submitMove(sourceSquare, targetSquare);
-            }
           }
         }
 
@@ -497,7 +511,6 @@
                     .css('left', '' + boardData[y][nx][0].offsetLeft + 'px')
                     .css('top', '' + boardData[y][nx][0].offsetTop + 'px');
             }
-            if(move.visible) checkCheck();
         }
 
         // create the board
@@ -595,11 +608,13 @@
 
         function resign() {
             if(whiteMove == playAsWhite) {
-	            resigned = true;
+	            if(whiteMove) state = gameState.WHITE_RESIGNED;
+	            else state = gameState.BLACK_RESIGNED;
+              whiteMove = !whiteMove;
 	            sendMoveString('resign', function() {
-	                whiteMove = !whiteMove;
-	                $('#resignedMark').show();
-	                $('#yourMoveMark').hide();
+	            }, function() {
+                whiteMove = !whiteMove;
+		            state = gameState.NOT_FINSIHED;
 	            });
             }
         }
@@ -607,8 +622,8 @@
         function fastForward() {
             for(var i = moveList.length; i < moves.length; i++) {
                 if(moves[i] == 'resign'){
-                    $('#resignedMark').show();
-                    whiteMove = !playAsWhite;
+                  if(whiteMove) state = gameState.WHITE_RESIGNED;
+                  else state = gameState.BLACK_RESIGNED;
                 } else {
 	                var parts = moves[i].split('-'); 
 	                var from = parts[0], to = parts[1];
@@ -623,15 +638,16 @@
 	                doMove(piece, square, true, promoteTo);
                 }
             }
-            if(whiteMove == playAsWhite && !inCheckmate && !canMove(playAsWhite)) { // set stalemate indicator
-                whiteMove = !playAsWhite;
-                $('#yourMoveMark').hide();
-            }
+            updateIndicators();
         }
         
-        $('#undo').click(undoMove);
+        $('#undo').click(function () {
+            undoMove();
+            updateIndicators()
+        });
         $('#reset').click(function() {
             while(moveList.length) undoMove();
+            updateIndicactors();
         });
         $('#flip').click(flip);
         $('#resign').click(resign);

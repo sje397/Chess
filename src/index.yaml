@@ -13,5 +13,5 @@ indexes:
 - kind: Game
   properties:
   - name: blackPlayer
-  - name: finished
+  - name: state
   - name: whitePlayer

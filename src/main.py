@@ -101,8 +101,8 @@ class MainView(BaseView):
       contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : [{'primary': 'true', 'address': 'dev@example.com'}]},
                   {'title' : {'text': 'buddy number 2'}, 'email' : [{'primary': 'true', 'address': 'nobody@example.com'}]}]
 
-    games = models.Game.gql('where finished = FALSE and whitePlayer = :1', user._user_info_key).fetch(200) 
-    games.extend(models.Game.gql('where finished = False and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
+    games = models.Game.gql('where state = 0 and whitePlayer = :1', user._user_info_key).fetch(200) 
+    games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
 
     invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
     invitesTo = models.Invite.gql('where toUser = :1 and toEmail = NULL and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
@@ -145,16 +145,12 @@ Please visit http://your-move.appspot.com to accept or reject this invite.
 """)
       invite.put()
     if self.request.get('submit') == 'Delete':
-      invites = self.request.get('select')
-      if not isinstance(invites, list):
-        invites = [invites]
+      invites = self.request.get_all('select')
       for i in invites:
         invite = db.get(i)
         invite.delete()
     if self.request.get('submit') == 'Accept':
-      invites = self.request.get('select')
-      if not isinstance(invites, list):
-        invites = [invites]
+      invites = self.request.get_all('select')
       for i in invites:
         invite = db.get(i)
         if invite:
@@ -168,9 +164,7 @@ Please visit http://your-move.appspot.com to accept or reject this invite.
             game = models.Game(whitePlayer = invite.toUser, blackPlayer = invite.fromUser)
           game.put()
     if self.request.get('submit') == 'Reject':
-      invites = self.request.get('select')
-      if not isinstance(invites, list):
-        invites = [invites]
+      invites = self.request.get_all('select')
       for i in invites:
         invite = db.get(i)
         if invite:
@@ -191,6 +185,10 @@ class GameView(BaseView):
         if not prefs:
           prefs = models.Prefs(user = user)
         template_values.update({'prefs': prefs})
+        if dev_env:
+          template_values.update({'pollPeriod': 5000})
+        else:
+          template_values.update({'pollPeriod': 30000})
         template_values.update({'logoutUrl': users.create_logout_url("/")})
         template_values.update({'user': user})
         template_values.update({'game': game})
@@ -225,14 +223,15 @@ class GameData(BaseView):
     gameKeyStr = self.request.get('id')
     move = self.request.get('move')
     moveNum = int(self.request.get('moveNum'))
-    finish = self.request.get('finish') == 'true'
+    logging.info("state: %s" % self.request.get('state'))
+    state = int(self.request.get('state'))
     if gameKeyStr and move:
       game = db.get(gameKeyStr)
       if game:
-        if len(game.moves) == moveNum - 1 and not game.finished:
+        if len(game.moves) == moveNum - 1 and game.state == models.NOT_FINISHED:
           game.moves.append(move)
           game.whiteMove = not game.whiteMove
-          game.finished = finish
+          game.state = state
           game.put()
           #self.redirect('/game?id=' + str(game.key()))
         else:
