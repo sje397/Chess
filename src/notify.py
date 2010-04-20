@@ -26,12 +26,9 @@ def sendInviteEmail(user, invite):
 Please visit http://your-move.appspot.com?i=""" + str(invite.key()) + """ to accept or reject this invite.
 
 You can change email settings at http://your-move.appspot.com/prefs.""",
-              html="""Dear """ + toEmail + """,
-
-<aref='mailTo:""" + user.email() + """'>""" + user.nickname() + """</a> has invited you to play a game of chess.
-
-Please <a href='http://your-move.appspot.com?i=""" + str(invite.key()) + """'>click here</a> to accept or reject this invite.
-
+              html="""Dear """ + toEmail + """,<br><br>
+<aref='mailTo:""" + user.email() + """'>""" + user.nickname() + """</a> has invited you to play a game of chess.<br>
+Please <a href='http://your-move.appspot.com?i=""" + str(invite.key()) + """'>click here</a> to accept or reject this invite.<br><br>
 You can change email settings <a href='http://your-move.appspot.com/prefs'>here</a>.""")
 
 def sendYourMoveEmail(movePlayer, opponent, gameKey):
@@ -45,12 +42,9 @@ It's your turn to move in a game against """ + opponent.nickname() + """.
 You can view this game at http://your-move.appspot.com/game?id=""" + gameKey + """.
 
 You can change email settings at http://your-move.appspot.com/prefs.""",
-              html="""Dear """ + movePlayer.nickname() + """,
-
-It's your turn to move in a game against """ + opponent.nickname() + """.
-
-To view this game, <a href='http://your-move.appspot.com/game?id=""" + gameKey + """'>click here</a>.
-
+              html="""Dear """ + movePlayer.nickname() + """,<br><br>
+It's your turn to move in a game against """ + opponent.nickname() + """.<br>
+To view this game, <a href='http://your-move.appspot.com/game?id=""" + gameKey + """'>click here</a>.<br><br>
 You can change email settings <a href='http://your-move.appspot.com/prefs'>here</a>.""")
 
 def sendInvite(user, invite):

@@ -76,7 +76,8 @@ class MainView(BaseView):
     if inviteKey:
       invite = db.get(inviteKey)
       if invite:
-        altEmail = invite.toEmail        
+        altEmail = invite.toEmail
+        invite.toUser = user        
         invite.toEmail = user.email()
         logging.info("Invite was to %s - updating" % altEmail)
         invite.put()

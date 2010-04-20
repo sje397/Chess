@@ -161,7 +161,7 @@
   var sel = $('#inviteSelect'); 
   sel.change(function() {
 	  $('#inviteInput').val(sel.val());
-  });
+  }).change(); // fill the box initially
   setTimeout(update, pollPeriod);
 </script>
 {% endblock %}
