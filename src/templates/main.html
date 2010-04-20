@@ -41,21 +41,20 @@
     <span class='sectionTitle'>Start a new game</span>
 	  <form method='POST'>
 {% if contacts %}
-		<select name='invited'>
+		<select id='inviteSelect'>
 {% for e in contacts %}
 		{% for em in e.email %}
 	    <option value="{{ em.address }}">{{ e.title.text }} ({{ em.address }})</option>
     {% endfor %}
 {% endfor %}
 		</select>
-{% else %}
-    <label>Email:</label><input type='text' name='invited'></input>
 {% endif %}
+    <label>Email:</label><input type='text' name='invited' id='inviteInput' ></input>
 		<input type='submit' value='Invite'></input>
+		</form>
 {% if contacts %}
     <a href='http://www.google.com/contacts'>Manage Contacts</a>
 {% endif %}    
-		</form>
 	</div>
 	</div>
 	<div class='sectionGroup'>
@@ -142,7 +141,8 @@
   setInvites('#invitesFrom', invitesFrom, true);
   setInvites('#invitesTo', invitesTo, false);
 
-  var pollPeriod = 30000;
+  //var pollPeriod = 120000;
+  var pollPeriod = {{ pollPeriod }};
   
   function update() {
       $.ajax({ url: "/summaryData", context: document.body, dataType: 'json',
@@ -158,6 +158,10 @@
       });
   }
 
+  var sel = $('#inviteSelect'); 
+  sel.change(function() {
+	  $('#inviteInput').val(sel.val());
+  });
   setTimeout(update, pollPeriod);
 </script>
 {% endblock %}

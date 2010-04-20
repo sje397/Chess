@@ -71,9 +71,23 @@ class BaseView(webapp.RequestHandler):
 class MainView(BaseView):
   @authRequired
   def get(self, user):
-    if not dev_env:
-      logging.warn("Logged in as %s (%s)", user.nickname(), user.email())
-                
+    # determine whether we got here via an invite to a different email address
+    inviteKey = self.request.get('i')
+    if inviteKey:
+      invite = db.get(inviteKey)
+      if invite:
+        altEmail = invite.toEmail        
+        invite.toEmail = user.email()
+        logging.info("Invite was to %s - updating" % altEmail)
+        invite.put()
+              
+    if dev_env:
+      # some test data
+      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : [{'primary': 'true', 'address': 'dev@example.com'}]},
+                  {'title' : {'text': 'buddy number 2'}, 'email' : [{'primary': 'true', 'address': 'nobody@example.com'}]}]
+    else:
+      logging.info("Logged in as %s (%s)", user.nickname(), user.email())
+      
       if (hasattr(user.user_info(), 'access_token') == False or user.user_info().access_token is None) and hasattr(user.user_info(), 'request_token'):
         signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
     
@@ -97,10 +111,6 @@ class MainView(BaseView):
       else:
         contacts = []
         
-    else:
-      contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : [{'primary': 'true', 'address': 'dev@example.com'}]},
-                  {'title' : {'text': 'buddy number 2'}, 'email' : [{'primary': 'true', 'address': 'nobody@example.com'}]}]
-
     games = models.Game.gql('where state = 0 and whitePlayer = :1', user._user_info_key).fetch(200) 
     games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
 
@@ -120,6 +130,10 @@ class MainView(BaseView):
     template_values.update({'games': games})
     template_values.update({'invitesFrom': invitesFrom})
     template_values.update({'invitesTo': invitesTo})
+    if dev_env:
+      template_values.update({'pollPeriod': 5000})
+    else:
+      template_values.update({'pollPeriod': 120000})
 
     self.render_template('main.html', template_values)
 
@@ -131,11 +145,12 @@ class MainView(BaseView):
       if info:
         other = users.User(identity_url = info.key().name())
         invite = models.Invite(toUser = other, toEmail = toEmail)
-        notify.sendInvite(user, other)
+        invite.put()
+        notify.sendInvite(user, invite)
       else:
         invite = models.Invite(toEmail = toEmail)
-        notify.sendInviteEmail(user, toEmail)
-      invite.put()
+        invite.put()
+        notify.sendInviteEmail(user, invite)
     if self.request.get('submit') == 'Delete':
       invites = self.request.get_all('select')
       for i in invites:
@@ -179,7 +194,7 @@ class GameView(BaseView):
         if dev_env:
           template_values.update({'pollPeriod': 5000})
         else:
-          template_values.update({'pollPeriod': 30000})
+          template_values.update({'pollPeriod': 60000})
         template_values.update({'logoutUrl': users.create_logout_url("/")})
         template_values.update({'user': user})
         template_values.update({'game': game})
