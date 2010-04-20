@@ -96,14 +96,14 @@
 
 {% for i in invitesFrom %}
 {% if i.toUser %}
-    invitesFrom.push({key: "{{ i.key }}", nick: "{{ i.toUser.nickname }}", email: "{{ i.toUser.email }}"});
+    invitesFrom.push({key: "{{ i.key }}", toUser: {nickname: "{{ i.toUser.nickname }}", email: "{{ i.toUser.email }}"}, toEmail: "{{ i.toEmail }}"});
 {% else %}
-    invitesFrom.push({key: "{{ i.key }}", nick: "Unknown", email: "{{ i.toUser.email }}"});
+    invitesFrom.push({key: "{{ i.key }}", toEmail: "{{ i.toEmail }}"});
 {% endif %}
 {% endfor %}
     var invitesTo = [];
 {% for i in invitesTo %}
-    invitesTo.push({key: "{{ i.key }}", nick: "{{ i.fromUser.nickname }}", email: "{{ i.fromUser.email }}"});
+    invitesTo.push({key: "{{ i.key }}", fromUser: {nickname: "{{ i.fromUser.nickname }}", email: "{{ i.fromUser.email }}"}});
 {% endfor %}
 
   function setGames(games) {
@@ -121,13 +121,15 @@
 	  } else
 		  $(selector).hide();
 }
-  function setInvites(selector, invites) {
+  function setInvites(selector, invites, bFrom) {
 	  var table = $(selector + ' table');
 	  $('tbody', table).empty();
 	  if(invites.length) {
-		  var row;
+		  var row, user;
 		  for(var i = 0; i < invites.length; i++) {
-			  row = $('<tr><td>' + invites[i].nick + '</td><td>' + invites[i].email + '</td><td><input type="checkbox" name="select" value="' 
+			  if(bFrom) user = invites[i].toUser;
+			  else user = invites[i].fromUser;
+			  row = $('<tr><td>' + (user ? user.nickname : "Unknown") + '</td><td>' + (user ? user.email : invites[i].toEmail) + '</td><td><input type="checkbox" name="select" value="' 
 					  + invites[i].key + '"></input></td></tr>');
 			  table.append(row);
 	  	}
@@ -137,8 +139,8 @@
   }
 
   setGames(games);
-  setInvites('#invitesFrom', invitesFrom);
-  setInvites('#invitesTo', invitesTo);
+  setInvites('#invitesFrom', invitesFrom, true);
+  setInvites('#invitesTo', invitesTo, false);
 
   var pollPeriod = 30000;
   
@@ -146,8 +148,8 @@
       $.ajax({ url: "/summaryData", context: document.body, dataType: 'json',
           success: function(data) {
           	setGames(data.games);
-            setInvites('#invitesFrom', data.invitesFrom);
-            setInvites('#invitesTo', data.invitesTo);
+            setInvites('#invitesFrom', data.invitesFrom, true);
+            setInvites('#invitesTo', data.invitesTo, false);
             setTimeout(update, pollPeriod);
           },
           error: function(xhr, textStatus) {

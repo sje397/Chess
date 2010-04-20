@@ -214,16 +214,17 @@ class SummaryData(BaseView):
     data['games'] = []
     for g in games:
       data['games'].append({'key': str(g.key()), 'moves': len(g.moves), 'myMove' : g.myMove(), 'whiteNick': g.whitePlayer.nickname(), 'blackNick': g.blackPlayer.nickname()})
-    data['invitesFrom'] = []
-    for i in invitesFrom:
-      data['invitesFrom'].append({'key': str(i.key()), 'nick': i.fromUser.nickname(), 'email': i.fromUser.email()})
+      
     data['invitesTo'] = []
     for i in invitesTo:
-      if i.toUser is None:
-        nick = "Unknown"
-      else:
-        nick = i.toUser.nickname()
-      data['invitesTo'].append({'key': str(i.key()), 'nick': nick, 'email': i.toEmail})
+      data['invitesTo'].append({'key': str(i.key()), 'fromUser': {'nickname': i.fromUser.nickname(), 'email': i.fromUser.email()}})
+      
+    data['invitesFrom'] = []
+    for i in invitesFrom:
+      iData = {'key': str(i.key()), 'toEmail': i.toEmail}
+      if i.toUser:
+        iData['toUser'] = {'nickname': i.toUser.nickname(), 'email': i.toUser.email()}
+      data['invitesFrom'].append(iData)
     self.response.out.write(simplejson.dumps(data))
 
 class GameData(BaseView):
