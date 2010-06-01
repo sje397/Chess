@@ -36,7 +36,7 @@ class MissingHost(Error):
 class AtomPubClient(object):
   host = None
   auth_token = None
-  ssl = False # Whether to force all requests over https
+  ssl = True # Whether to force all requests over https
 
   def __init__(self, http_client=None, host=None,
                auth_token=None, source=None, **kwargs):
@@ -173,9 +173,9 @@ class AtomPubClient(object):
 
     # Set the user agent header for logging purposes.
     if self.source:
-      http_request.headers['User-Agent'] = '%s gdata-py/2.0.8' % self.source
+      http_request.headers['User-Agent'] = '%s gdata-py/2.0.10' % self.source
     else:
-      http_request.headers['User-Agent'] = 'gdata-py/2.0.8'
+      http_request.headers['User-Agent'] = 'gdata-py/2.0.10'
 
     return http_request
 

@@ -2,7 +2,7 @@ import logging
 from google.appengine.api import xmpp
 from google.appengine.api import mail
 
-from utils import getPrefs
+from models import getPrefs
 
 def sendInviteIM(user, invite):
   toEmail = invite.toEmail
@@ -48,14 +48,14 @@ To view this game, <a href='http://your-move.appspot.com/game?id=""" + gameKey +
 You can change email settings <a href='http://your-move.appspot.com/prefs'>here</a>.""")
 
 def sendInvite(user, invite):
-  prefs = getPrefs(invite.toUser)
+  prefs = models.getPrefs(invite.toUser)
   if prefs.emailInvited:
     sendInviteEmail(user, invite)
   if prefs.imInvited:
     sendInviteIm(user, invite)
 
 def sendYourMove(movePlayer, otherPlayer, gameKey):
-  prefs = getPrefs(movePlayer)
+  prefs = models.getPrefs(movePlayer)
   if prefs.emailMyMove:
     sendYourMoveEmail(movePlayer, otherPlayer, gameKey)
   if prefs.imMyMove:

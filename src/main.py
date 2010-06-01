@@ -7,11 +7,14 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
+from google.appengine.api import users
 
 import gdata.service
 import gdata.alt.appengine
 import gdata.auth
 import gdata.urlfetch
+# Use urlfetch instead of httplib
+gdata.service.http_request_handler = gdata.urlfetch
 
 import gdata.contacts
 import gdata.contacts.service
@@ -19,14 +22,16 @@ import gdata.contacts.service
 from django.utils import simplejson 
 
 import models
+from models import getPrefs
+
 import notify
-from utils import getPrefs
 
 dev_env = os.environ['SERVER_SOFTWARE'].startswith('Dev')
 
 settings = {
   'GOOGLE_CONSUMER_KEY': 'your-move.appspot.com',
-  'SIG_METHOD': gdata.auth.OAuthSignatureMethod.RSA_SHA1
+  'SIG_METHOD': gdata.auth.OAuthSignatureMethod.RSA_SHA1,
+  'SCOPES': ['https://www.google.com/m8/feeds/']
 }
 
 if not dev_env:
@@ -34,32 +39,12 @@ if not dev_env:
   RSA_KEY = f.read()
   f.close()
 
-  gcontacts = gdata.contacts.service.ContactsService()
-  gdata.alt.appengine.run_on_appengine(gcontacts)
-  gcontacts.SetOAuthInputParameters(settings['SIG_METHOD'], settings['GOOGLE_CONSUMER_KEY'], rsa_key=RSA_KEY)
-
-from aeoid import users
-
 def makeToken(tokenString, scope):
   logging.info('making key from string "%s"' % tokenString)
   oauth_input_params=gcontacts.GetOAuthInputParameters()
   token = gdata.auth.OAuthToken(scopes=[scope], oauth_input_params=oauth_input_params)
   token.set_token_string(tokenString)
   return token
-
-def authRequired(fn):
-  def authFunc(*args, **kwargs):
-    user = users.get_current_user()
-    if not dev_env:
-      if not user:
-        args[0].redirect(users.create_login_url(args[0].request.url))
-        return
-    else:
-      user = users.User(identity_url = 'http://example.com/testAEOID', nickname = 'dev', email = 'dev@example.com', is_admin = True)
-      os.environ['aeoid.user'] = str(user._user_info_key)
-    kwargs.update({'user': user})
-    return fn(*args, **kwargs)
-  return authFunc
  
 class BaseView(webapp.RequestHandler):
   def initialize(self, request, response):
@@ -69,8 +54,14 @@ class BaseView(webapp.RequestHandler):
     self.response.out.write(template.render(path, template_values))      
 
 class MainView(BaseView):
-  @authRequired
-  def get(self, user):
+  def __init__(self):
+    self.gcontacts = gdata.contacts.service.ContactsService()
+    self.gcontacts.SetOAuthInputParameters(settings['SIG_METHOD'], settings['GOOGLE_CONSUMER_KEY'], rsa_key=RSA_KEY)
+    gdata.alt.appengine.run_on_appengine(self.gcontacts)
+    
+    
+  def get(self):
+    user = users.get_current_user()
     # determine whether we got here via an invite to a different email address
     inviteKey = self.request.get('i')
     if inviteKey:
@@ -87,36 +78,56 @@ class MainView(BaseView):
       contacts = [{'title' : {'text': 'buddy number 1'}, 'email' : [{'primary': 'true', 'address': 'dev@example.com'}]},
                   {'title' : {'text': 'buddy number 2'}, 'email' : [{'primary': 'true', 'address': 'nobody@example.com'}]}]
     else:
-      logging.info("Logged in as %s (%s)", user.nickname(), user.email())
-      
-      if (hasattr(user.user_info(), 'access_token') == False or user.user_info().access_token is None) and hasattr(user.user_info(), 'request_token'):
-        signed_request_token = gdata.auth.OAuthToken(key=user.user_info().request_token, secret='')
-    
-        access_token = gcontacts.UpgradeToOAuthAccessToken(signed_request_token)
-        logging.info('access token: %s' % access_token)
-        user.updateInfo(access_token = str(access_token))
-      
-      if hasattr(user.user_info(), 'access_token') and user.user_info().access_token is not None:
-        # TODO: if access token is not valid, renew
-        gcontacts.current_token = makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/')  
-        #gcontacts.SetOAuthToken(makeToken(user.user_info().access_token, 'http://www.google.com/m8/feeds/'))
+      if not user.email():
+        self.error(400)
         
+      logging.info("Logged in as %s (%s)", user.nickname(), user.email())
+
+      oauth_token = gdata.auth.OAuthTokenFromUrl(self.request.uri)
+      if oauth_token:
+        oauth_token.oauth_input_params = self.gcontacts.GetOAuthInputParameters()
+        self.gcontacts.SetOAuthToken(oauth_token)
+        
+        oauth_verifier = self.request.get('oauth_verifier', default_value='')
+        access_token = self.gcontacts.UpgradeToOAuthAccessToken(oauth_verifier = oauth_verifier)
+
+        # Remember the access token in the current user's token store
+        if access_token and users.get_current_user():
+          self.gcontacts.token_store.add_token(access_token)
+        elif access_token:
+          self.gcontacts.current_token = access_token
+          self.gcontacts.SetOAuthToken(access_token)
+
+      access_token = self.gcontacts.token_store.find_token('%20'.join(settings['SCOPES']))
+      if not isinstance(access_token, gdata.auth.OAuthToken):
+        # 1.) REQUEST TOKEN STEP. Provide the data scope(s) and the page we'll
+        # be redirected back to after the user grants access on the approval page.
+        req_token = self.gcontacts.FetchOAuthRequestToken(scopes=settings['SCOPES'], oauth_callback=self.request.uri)
+  
+        # Generate the URL to redirect the user to.  Add the hd paramter for a
+        # better user experience.  Leaving it off will give the user the choice
+        # of what account (Google vs. Google Apps) to login with.
+        domain = self.request.get('domain', default_value='default')
+        approval_page_url = self.gcontacts.GenerateOAuthAuthorizationURL(extra_params={'hd': domain})
+  
+        # 2.) APPROVAL STEP.  Redirect to user to Google's OAuth approval page.
+        self.redirect(approval_page_url)
+        return
+      else:
+        #try:
         query = gdata.contacts.service.ContactsQuery()
         query.max_results = 500
-        try:
-          feed = gcontacts.GetContactsFeed(query.ToUri())
-          contacts = feed.entry
-        except:
-          user.updateInfo(access_token = None)
-          contacts = []
-      else:
-        contacts = []
+        logging.info('Feed url: %s' % query.ToUri())
+        feed = self.gcontacts.GetContactsFeed(query.ToUri())
+        contacts = feed.entry
+        #except:
+        #  contacts = []
         
-    games = models.Game.gql('where state = 0 and whitePlayer = :1', user._user_info_key).fetch(200) 
-    games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
+    games = models.Game.gql('where state = 0 and whitePlayer = :1', user).fetch(200) 
+    games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user).fetch(200)) 
 
-    invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
-    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+    invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user, models.INVITE_PENDING).fetch(100)
+    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user, models.INVITE_PENDING).fetch(100)
 
     invitesToEtc = models.Invite.gql('where toUser = NULL and toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
     for i in invitesToEtc:
@@ -138,14 +149,13 @@ class MainView(BaseView):
 
     self.render_template('main.html', template_values)
 
-  @authRequired
-  def post(self, user):
+  def post(self):
+    user = users.get_current_user()
     toEmail = self.request.get('invited')
     if toEmail:
-      info = users.UserInfo.gql('where email = :1', toEmail).get()
-      if info:
-        other = users.User(identity_url = info.key().name())
-        invite = models.Invite(toUser = other, toEmail = toEmail)
+      prefs = models.Prefs.gql('where userEmail = :1', toEmail).get()
+      if prefs:
+        invite = models.Invite(toUser = prefs.user, toEmail = toEmail)
         invite.put()
         notify.sendInvite(user, invite)
       else:
@@ -182,8 +192,8 @@ class MainView(BaseView):
     self.redirect('/')
 
 class GameView(BaseView):
-  @authRequired
-  def get(self, user):
+  def get(self):
+    user = users.get_current_user()
     gameKeyStr = self.request.get('id')
     if gameKeyStr:
       game = db.get(gameKeyStr)
@@ -212,13 +222,13 @@ class GameView(BaseView):
       self.error(500)
       
 class SummaryData(BaseView):
-  @authRequired
-  def get(self, user):
-    games = models.Game.gql('where state = 0 and whitePlayer = :1', user._user_info_key).fetch(200) 
-    games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user._user_info_key).fetch(200)) 
+  def get(self):
+    user = users.get_current_user()
+    games = models.Game.gql('where state = 0 and whitePlayer = :1', user).fetch(200) 
+    games.extend(models.Game.gql('where state = 0 and blackPlayer = :1 and whitePlayer != :1', user).fetch(200)) 
 
-    invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
-    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user._user_info_key, models.INVITE_PENDING).fetch(100)
+    invitesFrom = models.Invite.gql('where fromUser = :1 and status = :2', user, models.INVITE_PENDING).fetch(100)
+    invitesTo = models.Invite.gql('where toUser = :1 and status = :2', user, models.INVITE_PENDING).fetch(100)
 
     invitesToEtc = models.Invite.gql('where toUser = NULL and toEmail = :1 and status = :2', user.email(), models.INVITE_PENDING).fetch(100)
     for i in invitesToEtc:
@@ -244,8 +254,8 @@ class SummaryData(BaseView):
     self.response.out.write(simplejson.dumps(data))
 
 class GameData(BaseView):
-  @authRequired
-  def get(self, user):
+  def get(self):
+    user = users.get_current_user()
     gameKeyStr = self.request.get('id')
     if gameKeyStr:
       game = db.get(gameKeyStr)
@@ -257,8 +267,8 @@ class GameData(BaseView):
     else:
       self.error(500)
     
-  @authRequired
-  def post(self, user):
+  def post(self):
+    user = users.get_current_user()
     gameKeyStr = self.request.get('id')
     move = self.request.get('move')
     moveNum = int(self.request.get('moveNum'))
@@ -291,11 +301,11 @@ class GameData(BaseView):
     
 
 class PrefsView(BaseView):
-  @authRequired
-  def get(self, user):
+  def get(self):
+    user = users.get_current_user()
     template_values = {}
     
-    prefs = models.Prefs.gql('where user = :1', user._user_info_key).get()
+    prefs = models.Prefs.gql('where user = :1', user).get()
     if not prefs:
       prefs = models.Prefs(user = user)
     template_values.update({'prefs': prefs})
@@ -304,11 +314,11 @@ class PrefsView(BaseView):
     template_values.update({'user': user})
     self.render_template('prefs.html', template_values)
 
-  @authRequired
-  def post(self, user):
-    prefs = models.Prefs.gql('where user = :1', user._user_info_key).get()
+  def post(self):
+    user = users.get_current_user()
+    prefs = models.Prefs.gql('where user = :1', user).get()
     if not prefs:
-      prefs = models.Prefs()
+      prefs = models.Prefs(user = user, userEmail = user.email())
       
     prefs.whitePieceType = self.request.get('wpcType')
     prefs.blackPieceType = self.request.get('bpcType')
@@ -324,12 +334,23 @@ class PrefsView(BaseView):
     
     self.redirect('/')
 
+class AdminView(BaseView):
+  def get(self):
+    user = users.get_current_user()
+    action = self.request.get('action')
+    self.response.headers['Content-Type'] = 'text/plain'
+    self.response.out.write('Hello, %s.\n\n' % user.nickname())
+    if action=='flush':
+      memcache.flush_all()
+      self.response.out.write('Cache flushed.\n')
+    
 application = webapp.WSGIApplication(
                                      [ ('/', MainView),
                                        ('/game', GameView),
                                        ('/gameData', GameData),
                                        ('/summaryData', SummaryData),
                                        ('/prefs', PrefsView),
+                                       ('/admin', AdminView)
                                       ],
                                      debug=True)
 def main():
