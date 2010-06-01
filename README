@@ -1,3 +1,5 @@
-cd ~/repo
-git clone git://github.com/sje397/aeoid.git
-git clone git://github.com/sje397/Chess.git
+Chess
+
+simple client-side move validation
+uses app engine's openid support
+and oauth for gdata API access on the server (to get contacts)
