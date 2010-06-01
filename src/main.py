@@ -307,7 +307,7 @@ class PrefsView(BaseView):
     
     prefs = models.Prefs.gql('where user = :1', user).get()
     if not prefs:
-      prefs = models.Prefs(user = user)
+      prefs = models.Prefs(user = user, userEmail = user.email())
     template_values.update({'prefs': prefs})
 
     template_values.update({'logoutUrl': users.create_logout_url("/")})
