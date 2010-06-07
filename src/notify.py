@@ -48,14 +48,14 @@ To view this game, <a href='http://your-move.appspot.com/game?id=""" + gameKey +
 You can change email settings <a href='http://your-move.appspot.com/prefs'>here</a>.""")
 
 def sendInvite(user, invite):
-  prefs = models.getPrefs(invite.toUser)
+  prefs = getPrefs(invite.toUser)
   if prefs.emailInvited:
     sendInviteEmail(user, invite)
   if prefs.imInvited:
     sendInviteIm(user, invite)
 
 def sendYourMove(movePlayer, otherPlayer, gameKey):
-  prefs = models.getPrefs(movePlayer)
+  prefs = getPrefs(movePlayer)
   if prefs.emailMyMove:
     sendYourMoveEmail(movePlayer, otherPlayer, gameKey)
   if prefs.imMyMove:
